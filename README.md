@@ -6,13 +6,15 @@ mqtt_ups_sched
 #### Tested devices
 * EASun Power ISolar MLV 3KW-U
 * SRNE HF2430U60-100
-Tested with FreeBSD 13.2 with mosquitto 2.0.15, and SolarAssistant Software version 2023-08-16.
+
+ Tested with FreeBSD 13.2 with mosquitto 2.0.15, and SolarAssistant Software version 2023-08-16.
 
 #### Supported devices may include*
 * SRNE
 * EASun
 * PowMR
-And similar rebranded AIO inverters supporting SolarAssistant or similar.
+
+ And similar rebranded AIO inverters supporting SolarAssistant or similar.
  
 Host requirements
 ===============
@@ -174,5 +176,5 @@ solar_assistant/total/bus_voltage/state 333.5
 ```shell
 BROKER_TOPIC_STATS="# -R -C 18"
 ```
-#####  Where the `#` wildcard is used so sub to all "topics/states", the `-R` will avoid printing stale messages and the `-C 18` will tell to exit after receiving the 'msg_count' messages/states.
+#####  Where the `#` wildcard is used to sub to all "topics/states", the `-R` will avoid printing stale messages and the `-C 18` will tell to exit after receiving the 'msg_count' messages/states.
 

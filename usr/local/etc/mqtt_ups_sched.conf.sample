@@ -1,0 +1,51 @@
+# Run-time configuration file for mqtt_ups_sched.
+# Auto-generated file from mqtt_ups_sched.
+
+# Set the broker local IP address.
+BROKER_IP="localhost"
+
+# Set the broker port, default is 1883 and must be allowed by firewall.
+BROKER_PORT="1883"
+
+# Set the broker topic of the battery voltage state, eg: "solar_assistant/inverter_1/battery_voltage/state".
+BROKER_TOPIC_BATTVOLT=""
+
+# Set the broker topic of the device mode state, eg: "solar_assistant/inverter_1/device_mode/state".
+BROKER_TOPIC_DEVSTATE=""
+
+# Set the broker state output only when operating in grid mode, eg: "Grid"
+BROKER_TOPIC_GRIDMODE="Grid"
+
+# Set the broker state output only when operating in battery mode, eg: "Solar/Battery".
+BROKER_TOPIC_BATTMODE="Solar/Battery"
+
+# Select the desired topic/states to be displayed separated by space, eg: "sys/inv/grid/state sys/inv/batt/state sys/inv/etc/state".
+# Optionally you can display all device states with the parameter: "# -R -C XX", where "XX" is the max topic/state items of the device.
+BROKER_TOPIC_STATS=""
+
+# Provide a device name here for logging and reference.
+DEVICE_NAME=""
+
+# Set the minimum battery voltage to be considered as "system battery low" mode.
+DEVICE_BATT_LOW=""
+
+# Set the battery last changed date in "MMDDYYYY" for your reference, battery age alerts not yet implemented.
+DEVICE_BATT_CHANGE=""
+
+# Set the battery max age in years before replacement for your reference, battery age alerts not yet implemented.
+DEVICE_BATT_MAXAGE=""
+
+# Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".
+SYS_SHUTDOWN_CMD="/sbin/shutdown -p now"
+
+# Set the desired shutdown delay time in seconds.
+SYS_SHUTDOWN_DELAY="30"
+
+# Set "YES" here if the system must shutdown immediately if system battery low mode/threshold is reached.
+SYS_LOWBATT_FASTSHUTDOWN="NO"
+
+# Set "YES" here to enable system beeps during some state events.
+SYS_BEEP_ENABLE="NO"
+
+# Set the system max retry count in seconds during commlost/errors before the script halts.
+SYS_RETRY_COUNT="15"

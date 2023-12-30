@@ -1,7 +1,7 @@
 # Run-time configuration file for mqtt_ups_sched.
 # Auto-generated file from mqtt_ups_sched.
 
-# Set the broker local IP address.
+# Set the MQTT broker server local IP address.
 BROKER_IP="localhost"
 
 # Set the broker port, default is 1883 and must be allowed by firewall.

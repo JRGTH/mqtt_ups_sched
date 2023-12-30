@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.4.0"
+VERSION="1.4.1"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -97,7 +97,7 @@ runtime_config() {
 # Run-time configuration file for ${SCRIPTNAME}.
 # Auto-generated file from ${SCRIPTNAME}.
 
-# Set the broker local IP address.
+# Set the MQTT broker server local IP address.
 BROKER_IP="${DEFAULT_IP}"
 
 # Set the broker port, default is 1883 and must be allowed by firewall.

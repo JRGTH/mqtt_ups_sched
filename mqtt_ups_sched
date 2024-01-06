@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.4.02"
+VERSION="1.4.03"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -262,6 +262,7 @@ check_config() {
 
 current_date() {
 	# Get current date.
+	DATE=""
 	DATE=$(date +"%Y-%m-%d %T")
 }
 
@@ -361,10 +362,11 @@ device_commlost() {
 	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 	logger -t ${SCRIPTNAME} ${MSG}
 
-	RETRY=0
+	RETRY="0"
 	while :; do
 		# Wait for communication before halting.
 		if [ "${RETRY}" -eq "${SYS_RETRY_COUNT}" ]; then
+			current_date
 			speaker_beep
 			MSG="Unable to read device status, retries exhausted exiting!"
 			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
@@ -376,6 +378,7 @@ device_commlost() {
 
 			if [ -n "${DEV_STATUS}" ]; then
 				# Notify device communication is back.
+				current_date
 				speaker_beep
 				MSG="Device communication restored!"
 				echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
@@ -389,9 +392,8 @@ device_commlost() {
 }
 
 system_shutdown() {
-	current_date
 	speaker_beep
-	RETRY=0
+	RETRY="0"
 	while :; do
 		if [ "${RETRY}" -eq "${SYS_SHUTDOWN_DELAY}" ]; then
 			# Shutdown system if still running on battery power.
@@ -451,11 +453,13 @@ cmd_main() {
 			sleep ${POLL_INTERVAL}
 		elif [ "${DEV_STATUS}" = "${BROKER_TOPIC_BATTMODE}" ]; then
 			# Initialize the system shutdown countdown.
+			current_date
 			MSG="System running on battery power!"
 			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 			logger -t ${SCRIPTNAME} ${MSG}
 			system_shutdown
 		elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
+			current_date
 			MSG="System running on low battery power!"
 			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 			logger -t ${SCRIPTNAME} ${MSG}

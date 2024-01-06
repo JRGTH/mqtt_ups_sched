@@ -26,19 +26,19 @@ BROKER_TOPIC_STATS=""
 # Provide a device name here for logging and reference.
 DEVICE_NAME=""
 
-# Set the minimum battery voltage to be considered as "system battery low" mode.
+# Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer value here.
 DEVICE_BATT_LOW=""
 
 # Set the battery last changed date in "MMDDYYYY" for your reference, battery age alerts not yet implemented.
 DEVICE_BATT_CHANGE=""
 
-# Set the battery max age in years before replacement for your reference, battery age alerts not yet implemented.
+# Set the battery max age in "Y" years before replacement for your reference, battery age alerts not yet implemented.
 DEVICE_BATT_MAXAGE=""
 
 # Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".
 SYS_SHUTDOWN_CMD="/sbin/shutdown -p now"
 
-# Set the desired shutdown delay time in seconds.
+# Set the desired shutdown delay time in seconds, please use an integer value here.
 SYS_SHUTDOWN_DELAY="30"
 
 # Set "YES" here if the system must shutdown immediately if system battery low mode/threshold is reached.
@@ -47,5 +47,5 @@ SYS_LOWBATT_FASTSHUTDOWN="NO"
 # Set "YES" here to enable system beeps during some state events.
 SYS_BEEP_ENABLE="NO"
 
-# Set the system max retry count in seconds during commlost/errors before the script halts.
+# Set the system max retry count in seconds during commlost/errors before the script halts, please use an integer value here.
 SYS_RETRY_COUNT="15"

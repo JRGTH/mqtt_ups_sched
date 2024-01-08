@@ -25,11 +25,12 @@ Basic Usage
 ```shell
 Usage: mqtt_ups_sched [option]
 Options:
-      start    Start mqtt_ups_sched script.
-      stop     Stop mqtt_ups_sched sctipt.
-      stats    Display raw device states.
-      version  Display mqtt_ups_sched version.
-      help     Display this help message.
+      start       Start mqtt_ups_sched script.
+      stop        Stop mqtt_ups_sched sctipt.
+      stats       Display raw device states.
+      stats_json  Display device states in JSON format.
+      version     Display mqtt_ups_sched version.
+      help        Display this help message.
 ```
 
 Inverter Output States Sample(From SRNE/EASun)

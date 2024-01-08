@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.4.03"
+VERSION="1.5.00"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -43,11 +43,12 @@ cmd_version() {
 cmd_usage() {
 	echo -e "Usage: ${SCRIPTNAME} [option]
 Options:
-      start    Start ${SCRIPTNAME} script.
-      stop     Stop ${SCRIPTNAME} sctipt.
-      stats    Display raw device states.
-      version  Display ${SCRIPTNAME} version.
-      help     Display this help message."
+      start       Start ${SCRIPTNAME} script.
+      stop        Stop ${SCRIPTNAME} sctipt.
+      stats       Display raw device states.
+      stats_json  Display device states in JSON format.
+      version     Display ${SCRIPTNAME} version.
+      help        Display this help message."
 	exit 1
 }
 
@@ -77,6 +78,7 @@ PING_RETRY="1"
 POLL_INTERVAL="5"
 BATT_STATUS=""
 DEV_STATUS=""
+JSON_FORMAT="0"
 
 check_ifrunning() {
 	# Prevent for multiple script instances.
@@ -301,12 +303,20 @@ cmd_devstats() {
 					STAT_SELECT=$(echo " -t ${TOPIC}"${STAT_SELECT})
 				done
 				if [ -n "${STAT_SELECT}" ]; then
-					${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+					if [ "${JSON_FORMAT}" -eq "1" ]; then
+						${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+					else
+						${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+					fi
 				fi
 			else
 				# Display all stats once if wildcard/args "# -R -C XX" specified.
 				STAT_ALL="${BROKER_TOPIC_STATS}"
-				${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+				if [ "${JSON_FORMAT}" -eq "1" ]; then
+					${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
+				else
+					${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+				fi
 			fi
 		fi
 	else
@@ -490,6 +500,9 @@ case "${1}" in
 	stop)
 		cmd_stop;;
 	stats)
+		cmd_devstats;;
+	stats_json)
+		JSON_FORMAT="1"
 		cmd_devstats;;
 	version|-v)
 		cmd_version;;

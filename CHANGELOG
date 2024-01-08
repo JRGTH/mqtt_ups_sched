@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.00......Option to display states in JSON format.
 1.4.03......Get current date for each event.
 1.4.02......Update config file info.
 1.4.01......Wording/comments update.

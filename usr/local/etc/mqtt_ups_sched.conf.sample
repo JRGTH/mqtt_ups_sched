@@ -29,10 +29,10 @@ DEVICE_NAME=""
 # Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer value here.
 DEVICE_BATT_LOW=""
 
-# Set the battery last changed date in "MMDDYYYY" for your reference, battery age alerts not yet implemented.
+# Set the battery last changed date in "MMDDYYYY" for logging and reference.
 DEVICE_BATT_CHANGE=""
 
-# Set the battery max age in "Y" years before replacement for your reference, battery age alerts not yet implemented.
+# Set the battery max age in "Y" years before replacement for logging and reference.
 DEVICE_BATT_MAXAGE=""
 
 # Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".

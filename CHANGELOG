@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.02......Fix battery age statement variables.
 1.5.01......Added battery approx age logging.
 1.5.00......Option to display states in JSON format.
 1.4.03......Get current date for each event.

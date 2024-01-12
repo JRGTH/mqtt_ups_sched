@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.01"
+VERSION="1.5.02"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -275,8 +275,8 @@ check_battage() {
 	if [ -n "${DEVICE_BATT_CHANGE}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
 		BATTERY_YEAR=$(echo "${DEVICE_BATT_CHANGE}" | tail -c 5)
 		CURRENT_YEAR=$(date +%Y)
-		BATTERY_AGED=$(expr "${DEVICE_BATT_MAXAGE}" + "${BATTERY_YEAR}")
-		if [ "${BATTERY_AGED}" -ge "${CURRENT_YEAR}" ]; then
+		BATTERY_AGED=$(expr "${CURRENT_YEAR}" - "${BATTERY_YEAR}")
+		if [ "${BATTERY_AGED}" -ge "${DEVICE_BATT_MAXAGE}" ]; then
 			current_date
 			speaker_beep
 			MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_CHANGE}"

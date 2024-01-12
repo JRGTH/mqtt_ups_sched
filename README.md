@@ -180,5 +180,6 @@ BROKER_TOPIC_STATS="# -R -C 18"
 #####  Where the `#` wildcard is used to sub to all "topics/states", the `-R` will avoid printing stale messages and the `-C 18` will tell to exit after receiving the 'msg_count' messages/states.
 
 ## Installation
- Just get the script and place it under `/usr/local/sbin` set proper permissions and execute it, then you can configure the config file after.
+ Just download the script and place it under `/usr/local/sbin` set proper permissions and execute it, then you can edit the configuration file after.
+ Note that for `mosquitto_sub` authentication, the user can edit the `mosquitto_sub` configuration file to do so, then set file permissions accordingly.
 

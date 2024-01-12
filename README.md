@@ -95,7 +95,7 @@ DEVICE_BATT_LOW="23"
 # Set the battery last changed date in "MMDDYYYY" for logging and reference.
 DEVICE_BATT_CHANGE="10252023"
 
-# Set the battery max age in years before replacement for logging and reference.
+# Set the battery max age in "Y" years before replacement for logging and reference.
 DEVICE_BATT_MAXAGE="5"
 
 # Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".

@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh
 
 # mqtt_ups_sched
 # Simple UPS command scheduler script (mqtt_ups_sched) for FreeBSD.
@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.02"
+VERSION="1.5.03"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -375,8 +375,14 @@ device_status() {
 							DEV_STATUS="${BROKER_TOPIC_BATTMODE}"
 						fi
 					fi
+				else
+					# Assume device communication lost.
+					DEV_STATUS=""
 				fi
 			fi
+		else
+			# Assume device communication lost.
+			DEV_STATUS=""
 		fi
 	else
 		echo "=> Unknown device or parameter."

@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.04......Minor code fixes and improvements.
 1.5.03......Remove shebang -e flag, code improvements.
 1.5.02......Fix battery age statement variables.
 1.5.01......Added battery approx age logging.

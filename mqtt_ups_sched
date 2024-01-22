@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.04"
+VERSION="1.5.05"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -58,7 +58,7 @@ CONFIG_FILE="${CONFIG_PATH}/${SCRIPTNAME}.conf"
 LOG_FILE="/var/log/${SCRIPTNAME}.log"
 SPEAKER_DEV="/dev/speaker"
 RCCONF_FILE="/etc/rc.conf"
-TIMEOUT_CMD="timeout 3"
+TIMEOUT_CMD="timeout"
 MQTT_CMD="mosquitto_sub"
 DEFAULT_NAME="UPS"
 BROKER_MODE="MQTT"
@@ -324,18 +324,18 @@ cmd_devstats() {
 				done
 				if [ -n "${STAT_SELECT}" ]; then
 					if [ "${JSON_FORMAT}" -eq "1" ]; then
-						${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
 					else
-						${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
 					fi
 				fi
 			else
 				# Display all stats once if wildcard/args "# -R -C XX" specified.
 				STAT_ALL="${BROKER_TOPIC_STATS}"
 				if [ "${JSON_FORMAT}" -eq "1" ]; then
-					${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
+					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
 				else
-					${TIMEOUT_CMD} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
 				fi
 			fi
 		fi
@@ -360,8 +360,8 @@ device_status() {
 	if [ "${BROKER_MODE}" = "MQTT" ]; then
 		# Standard UPS/Inverter status, use command timeout to avoid execution hang if poor communication.
 		if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then		
-			DEV_STATUS=$(${TIMEOUT_CMD} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
-			BATT_STATUS=$(${TIMEOUT_CMD} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null | cut -d"." -f1)
+			DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
+			BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null | cut -d"." -f1)
 			if [ -n "${DEV_STATUS}" ]; then
 				# Check if running on utility grid.
 				if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then

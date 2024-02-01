@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.05"
+VERSION="1.5.06"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -273,18 +273,16 @@ current_date() {
 check_battage() {
 	# Get a quick battery age approximation just for logging and reference purposes only.
 	# This assumes the user properly configured the required parameter as there is no validation check.
-	if [ -n "${DEVICE_BATT_CHANGE}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
-		BATTERY_YEAR=$(echo "${DEVICE_BATT_CHANGE}" | tail -c 5)
-		CURRENT_YEAR=$(date +%Y)
-		BATTERY_AGED=$(expr "${CURRENT_YEAR}" - "${BATTERY_YEAR}")
-		if [ "${BATTERY_AGED}" -ge "${DEVICE_BATT_MAXAGE}" ]; then
-			current_date
-			speaker_beep
-			MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_CHANGE}"
-			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-			logger -t ${SCRIPTNAME} ${MSG}
-			BATT_ALERT="1"
-		fi
+	BATTERY_YEAR=$(echo "${DEVICE_BATT_CHANGE}" | tail -c 5)
+	CURRENT_YEAR=$(date +%Y)
+	BATTERY_AGED=$(expr "${CURRENT_YEAR}" - "${BATTERY_YEAR}")
+	if [ "${BATTERY_AGED}" -ge "${DEVICE_BATT_MAXAGE}" ]; then
+		current_date
+		speaker_beep
+		MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_CHANGE}"
+		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+		logger -t ${SCRIPTNAME} ${MSG}
+		BATT_ALERT="1"
 	fi
 }
 
@@ -358,6 +356,8 @@ system_shutdown_cmd() {
 device_status() {
 	# Get device status.
 	if [ "${BROKER_MODE}" = "MQTT" ]; then
+		DEV_STATUS=""
+		BATT_STATUS=""
 		# Standard UPS/Inverter status, use command timeout to avoid execution hang if poor communication.
 		if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then		
 			DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
@@ -372,18 +372,10 @@ device_status() {
 					if [ -n "${BATT_STATUS}" ]; then
 						if [ "${BATT_STATUS}" -le "${DEVICE_BATT_LOW}" ]; then
 							DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
-						else
-							DEV_STATUS="${BROKER_TOPIC_BATTMODE}"
 						fi
 					fi
-				else
-					# Assume device communication lost.
-					DEV_STATUS=""
 				fi
 			fi
-		else
-			# Assume device communication lost.
-			DEV_STATUS=""
 		fi
 	else
 		echo "=> Unknown device or parameter."
@@ -391,8 +383,10 @@ device_status() {
 	fi
 
 	# Get approximate battery age status and logging.
-	if [ "${BATT_ALERT}" -eq "0" ]; then
-		check_battage
+	if [ -n "${DEVICE_BATT_CHANGE}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
+		if [ "${BATT_ALERT}" -eq "0" ]; then
+			check_battage
+		fi
 	fi
 }
 
@@ -432,7 +426,7 @@ device_commlost() {
 	done
 }
 
-system_shutdown() {
+system_shutdown_timer() {
 	speaker_beep
 	RETRY="0"
 	while :; do
@@ -498,7 +492,7 @@ cmd_main() {
 			MSG="System running on battery power!"
 			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 			logger -t ${SCRIPTNAME} ${MSG}
-			system_shutdown
+			system_shutdown_timer
 		elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
 			current_date
 			MSG="System running on low battery power!"
@@ -509,7 +503,7 @@ cmd_main() {
 				system_shutdown_cmd
 			else
 				# Initialize the system shutdown countdown.
-				system_shutdown
+				system_shutdown_timer
 			fi
 		elif [ -z "${DEV_STATUS}" ]; then
 			# Notify we lost communication with the device.

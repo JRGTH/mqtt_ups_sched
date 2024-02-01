@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.06......Code improvements, redundant code cleanup.
 1.5.05......Use SYS_RETRY_COUNT as command timeout as well.
 1.5.04......Minor code fixes and improvements.
 1.5.03......Remove shebang -e flag, code improvements.

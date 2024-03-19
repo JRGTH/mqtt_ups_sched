@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.06"
+VERSION="1.5.07"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -138,6 +138,7 @@ DEVICE_BATT_MAXAGE=""
 SYS_SHUTDOWN_CMD="${DEFAULT_CMD}"
 
 # Set the desired shutdown delay time in seconds, please use an integer value here.
+# Time here may be relative due to the time it takes to query the topics and may vary per system.
 SYS_SHUTDOWN_DELAY="${DEFAULT_DELAY}"
 
 # Set "YES" here if the system must shutdown immediately if system battery low mode/threshold is reached.
@@ -343,23 +344,13 @@ cmd_devstats() {
 	fi
 }
 
-system_shutdown_cmd() {
-	current_date
-	speaker_beep
-	MSG="System going to shutdown now!"
-	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-	logger -t ${SCRIPTNAME} ${MSG}
-	${SYS_SHUTDOWN_CMD}
-	exit 0
-}
-
 device_status() {
 	# Get device status.
 	if [ "${BROKER_MODE}" = "MQTT" ]; then
 		DEV_STATUS=""
 		BATT_STATUS=""
 		# Standard UPS/Inverter status, use command timeout to avoid execution hang if poor communication.
-		if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then		
+		if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then
 			DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
 			BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null | cut -d"." -f1)
 			if [ -n "${DEV_STATUS}" ]; then
@@ -426,8 +417,19 @@ device_commlost() {
 	done
 }
 
+system_shutdown_cmd() {
+	current_date
+	speaker_beep
+	MSG="System going to shutdown now!"
+	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+	logger -t ${SCRIPTNAME} ${MSG}
+	${SYS_SHUTDOWN_CMD}
+	exit 0
+}
+
 system_shutdown_timer() {
 	speaker_beep
+	QUERY="0"
 	RETRY="0"
 	while :; do
 		if [ "${RETRY}" -eq "${SYS_SHUTDOWN_DELAY}" ]; then
@@ -435,6 +437,10 @@ system_shutdown_timer() {
 			system_shutdown_cmd
 		else
 			# Rescan device status before shutdown.
+			# Unfortunately this will add extra delay to the final shutdown time, this is due to the time it takes to ping/query the topics in regards(Device mode and battery voltage).
+			# Hence the time has to be relatively compensated eg. 30x3, where "30" is the wanted shutdown secs and the "3" is the secs the system need to query the device states,
+			# so it may yield about "90" secs or even more to the final shutdown delay if not compensated, also be aware that this may vary per system.
+			QUERY="1"
 			device_status
 
 			if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then
@@ -449,7 +455,15 @@ system_shutdown_timer() {
 				device_commlost
 			fi
 		fi
-		RETRY=$(expr ${RETRY} + 1)
+
+		# Workaround to append relative time compensation.
+		if [ "${QUERY}" = "1" ]; then
+			QUERY_TIME="4"
+		else
+			QUERY_TIME="1"
+		fi
+
+		RETRY=$(expr ${RETRY} + ${QUERY_TIME})
 		sleep 1
 	done
 }

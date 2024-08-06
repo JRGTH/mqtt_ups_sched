@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.07"
+VERSION="1.5.08"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -47,6 +47,7 @@ Options:
       stop        Stop ${SCRIPTNAME} sctipt.
       stats       Display raw device states.
       stats_json  Display device states in JSON format.
+      logs        Display device logs.
       version     Display ${SCRIPTNAME} version.
       help        Display this help message."
 	exit 1
@@ -344,6 +345,21 @@ cmd_devstats() {
 	fi
 }
 
+cmd_logview() {
+	# Display device logs.
+	if [ -f "${LOG_FILE}" ]; then
+		echo Log file: ["${LOG_FILE}"]
+		cat "${LOG_FILE}"
+	elif [ "/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log" ]; then
+		echo Log file: ["/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log"]
+		cat "/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log"
+	else
+		echo "Log file not found, exiting!"
+		exit 1
+	fi
+	exit 0
+}
+
 device_status() {
 	# Get device status.
 	if [ "${BROKER_MODE}" = "MQTT" ]; then
@@ -543,6 +559,8 @@ case "${1}" in
 	stats_json)
 		JSON_FORMAT="1"
 		cmd_devstats;;
+	logs)
+		cmd_logview;;
 	version|-v)
 		cmd_version;;
 	help|-h)

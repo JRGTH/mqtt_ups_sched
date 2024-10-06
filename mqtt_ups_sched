@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.08"
+VERSION="1.5.09"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -311,7 +311,7 @@ cmd_devstats() {
 
 		# Display device extra info/topics/stats.
 		if [ -n "${BROKER_TOPIC_STATS}" ]; then
-			echo "${DEVICE_NAME} ${DATE} DEVICE STATUS:"
+			echo "${DEVICE_NAME} ${DATE} Status:"
 			if ! echo "${BROKER_TOPIC_STATS}" | grep -q "#"; then
 				# Display user specified topic/stats.
 				STAT_SELECT=""
@@ -385,7 +385,9 @@ device_status() {
 			fi
 		fi
 	else
-		echo "=> Unknown device or parameter."
+		MSG="=> Unknown device or parameter, exiting."
+		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+		logger -t ${SCRIPTNAME} ${MSG}
 		exit 1
 	fi
 

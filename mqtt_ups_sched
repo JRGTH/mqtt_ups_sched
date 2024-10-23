@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.09"
+VERSION="1.5.10"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -345,6 +345,16 @@ cmd_devstats() {
 	fi
 }
 
+cmd_devstate() {
+	# Get device status.
+	DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
+}
+
+cmd_battstate() {
+	# Get battery status.
+	BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null | cut -d"." -f1)
+}
+
 cmd_logview() {
 	# Display device logs.
 	if [ -f "${LOG_FILE}" ]; then
@@ -365,23 +375,30 @@ device_status() {
 	if [ "${BROKER_MODE}" = "MQTT" ]; then
 		DEV_STATUS=""
 		BATT_STATUS=""
+		STATUS_DEVSTALE=""
 		# Standard UPS/Inverter status, use command timeout to avoid execution hang if poor communication.
 		if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then
-			DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
-			BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null | cut -d"." -f1)
+			cmd_devstate
 			if [ -n "${DEV_STATUS}" ]; then
 				# Check if running on utility grid.
 				if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then
 					DEV_STATUS="${BROKER_TOPIC_GRIDMODE}"
 				# Check if running on battery.
 				elif [ "${DEV_STATUS}" = "${BROKER_TOPIC_BATTMODE}" ]; then
+					cmd_battstate
 					# Check if running on low battery.
 					if [ -n "${BATT_STATUS}" ]; then
 						if [ "${BATT_STATUS}" -le "${DEVICE_BATT_LOW}" ]; then
 							DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
 						fi
+					else
+						MSG="Warning: Unable to read battery voltage status."
+						echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+						logger -t ${SCRIPTNAME} ${MSG}
 					fi
 				fi
+			else
+				STATUS_DEVSTALE="1"
 			fi
 		fi
 	else
@@ -409,7 +426,7 @@ device_commlost() {
 	RETRY="0"
 	while :; do
 		# Wait for communication before halting.
-		if [ "${RETRY}" -eq "${SYS_RETRY_COUNT}" ]; then
+		if [ "${RETRY}" -ge "${SYS_RETRY_COUNT}" ]; then
 			current_date
 			speaker_beep
 			MSG="Unable to read device status, retries exhausted exiting!"
@@ -430,7 +447,13 @@ device_commlost() {
 				break
 			fi
 		fi
-		RETRY=$(expr ${RETRY} + 1)
+
+		# Account for SYS_RETRY_COUNT if the device status stale.
+		if [ -n "${STATUS_DEVSTALE}" ]; then
+			RETRY=$(expr ${RETRY} + 1 + ${PING_RETRY} + ${SYS_RETRY_COUNT})
+		else
+			RETRY=$(expr ${RETRY} + 1 + ${PING_RETRY})
+		fi
 		sleep 1
 	done
 }
@@ -480,7 +503,6 @@ system_shutdown_timer() {
 		else
 			QUERY_TIME="1"
 		fi
-
 		RETRY=$(expr ${RETRY} + ${QUERY_TIME})
 		sleep 1
 	done

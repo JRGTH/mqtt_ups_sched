@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.10"
+VERSION="1.5.11"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -348,11 +348,13 @@ cmd_devstats() {
 cmd_devstate() {
 	# Get device status.
 	DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
+	DEV_TIMEOUT="$?"
 }
 
 cmd_battstate() {
 	# Get battery status.
 	BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null | cut -d"." -f1)
+	BATT_TIMEOUT="$?"
 }
 
 cmd_logview() {
@@ -373,6 +375,7 @@ cmd_logview() {
 device_status() {
 	# Get device status.
 	if [ "${BROKER_MODE}" = "MQTT" ]; then
+		DEV_TIMEOUT=""
 		DEV_STATUS=""
 		BATT_STATUS=""
 		STATUS_DEVSTALE=""
@@ -392,13 +395,21 @@ device_status() {
 							DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
 						fi
 					else
-						MSG="Warning: Unable to read battery voltage status."
-						echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-						logger -t ${SCRIPTNAME} ${MSG}
+						# Make sure to set STATUS_DEVSTALE only if command times out.
+						if [ "${BATT_TIMEOUT}" -eq "124" ]; then
+							STATUS_DEVSTALE="1"
+						else
+							MSG="Warning: Unable to read battery voltage status."
+							echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+							logger -t ${SCRIPTNAME} ${MSG}
+						fi
 					fi
 				fi
 			else
-				STATUS_DEVSTALE="1"
+				# Make sure to set STATUS_DEVSTALE only if command times out.
+				if [ "${DEV_TIMEOUT}" -eq "124" ]; then
+					STATUS_DEVSTALE="1"
+				fi
 			fi
 		fi
 	else

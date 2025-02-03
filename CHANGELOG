@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.6.00......Use either integer or float voltage parameter values.
 1.5.11......Code improvements for command timeout.
 1.5.10......Code improvements for dev comm lost status.
 1.5.09......Minor code changes and improvements.

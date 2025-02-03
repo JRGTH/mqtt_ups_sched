@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.5.11"
+VERSION="1.6.00"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -126,7 +126,7 @@ BROKER_TOPIC_STATS=""
 # Provide a device name here for logging and reference.
 DEVICE_NAME="[${DEFAULT_NAME}]"
 
-# Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer value here.
+# Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW=""
 
 # Set the battery last changed date in "MMDDYYYY" for logging and reference.
@@ -138,7 +138,7 @@ DEVICE_BATT_MAXAGE=""
 # Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".
 SYS_SHUTDOWN_CMD="${DEFAULT_CMD}"
 
-# Set the desired shutdown delay time in seconds, please use an integer value here.
+# Set the desired shutdown delay time in seconds, please use an integer value here, set to 0 to disable.
 # Time here may be relative due to the time it takes to query the topics and may vary per system.
 SYS_SHUTDOWN_DELAY="${DEFAULT_DELAY}"
 
@@ -353,7 +353,7 @@ cmd_devstate() {
 
 cmd_battstate() {
 	# Get battery status.
-	BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null | cut -d"." -f1)
+	BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null)
 	BATT_TIMEOUT="$?"
 }
 
@@ -391,7 +391,7 @@ device_status() {
 					cmd_battstate
 					# Check if running on low battery.
 					if [ -n "${BATT_STATUS}" ]; then
-						if [ "${BATT_STATUS}" -le "${DEVICE_BATT_LOW}" ]; then
+						if [ "${BATT_STATUS%.*}" -le "${DEVICE_BATT_LOW%.*}" ]; then
 							DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
 						fi
 					else
@@ -484,7 +484,7 @@ system_shutdown_timer() {
 	QUERY="0"
 	RETRY="0"
 	while :; do
-		if [ "${RETRY}" -eq "${SYS_SHUTDOWN_DELAY}" ]; then
+		if [ "${RETRY}" -eq "${SYS_SHUTDOWN_DELAY}" ] && [ "${SYS_SHUTDOWN_DELAY}" -ne "0" ]; then
 			# Shutdown system if still running on battery power.
 			system_shutdown_cmd
 		else

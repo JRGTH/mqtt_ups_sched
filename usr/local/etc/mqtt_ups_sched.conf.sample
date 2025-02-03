@@ -26,7 +26,7 @@ BROKER_TOPIC_STATS=""
 # Provide a device name here for logging and reference.
 DEVICE_NAME=""
 
-# Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer value here.
+# Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW=""
 
 # Set the battery last changed date in "MMDDYYYY" for logging and reference.
@@ -38,7 +38,7 @@ DEVICE_BATT_MAXAGE=""
 # Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".
 SYS_SHUTDOWN_CMD="/sbin/shutdown -p now"
 
-# Set the desired shutdown delay time in seconds, please use an integer value here.
+# Set the desired shutdown delay time in seconds, please use an integer value here, set to 0 to disable.
 SYS_SHUTDOWN_DELAY="30"
 
 # Set "YES" here if the system must shutdown immediately if system battery low mode/threshold is reached.

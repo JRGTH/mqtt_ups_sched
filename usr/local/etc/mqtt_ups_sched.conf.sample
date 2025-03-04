@@ -29,7 +29,7 @@ DEVICE_NAME=""
 # Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW=""
 
-# Set the battery last changed date in "MMDDYYYY" for logging and reference.
+# Set the battery last changed date in "YYYYMMDD" for logging and reference.
 DEVICE_BATT_CHANGE=""
 
 # Set the battery max age in "Y" years before replacement for logging and reference.

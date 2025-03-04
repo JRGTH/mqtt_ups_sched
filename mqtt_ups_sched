@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.01"
+VERSION="1.6.02"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -129,7 +129,7 @@ DEVICE_NAME="[${DEFAULT_NAME}]"
 # Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW=""
 
-# Set the battery last changed date in "MMDDYYYY" for logging and reference.
+# Set the battery last changed date in "YYYYMMDD" for logging and reference.
 DEVICE_BATT_CHANGE=""
 
 # Set the battery max age in "Y" years before replacement for logging and reference.
@@ -275,7 +275,7 @@ current_date() {
 check_battage() {
 	# Get a quick battery age approximation just for logging and reference purposes only.
 	# This assumes the user properly configured the required parameter as there is no validation check.
-	BATTERY_YEAR=$(echo "${DEVICE_BATT_CHANGE}" | tail -c 5)
+	BATTERY_YEAR=$(echo "${DEVICE_BATT_CHANGE}" | cut -c 1-4)
 	CURRENT_YEAR=$(date +%Y)
 	BATTERY_AGED=$(expr "${CURRENT_YEAR}" - "${BATTERY_YEAR}")
 	if [ "${BATTERY_AGED}" -ge "${DEVICE_BATT_MAXAGE}" ]; then

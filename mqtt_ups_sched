@@ -8,7 +8,7 @@
 # Debug script.
 #set -x
 
-# Copyright (c) 2023 - 2024 Jose Rivera (JoseMR).
+# Copyright (c) 2023 - 2025 Jose Rivera (JoseMR).
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.02"
+VERSION="1.6.03"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -77,6 +77,7 @@ BEEP_TONE="G20"
 PING_COUNT="1"
 PING_RETRY="1"
 POLL_INTERVAL="5"
+STAT_INTERVAL="4"
 BATT_STATUS=""
 DEV_STATUS=""
 JSON_FORMAT="0"
@@ -392,7 +393,7 @@ device_status() {
 					cmd_battstate
 					# Check if running on low battery.
 					if [ -n "${BATT_STATUS}" ]; then
-						if [ "${BATT_STATUS%.*}" -le "${DEVICE_BATT_LOW%.*}" ]; then
+						if [ "$(echo "${BATT_STATUS} < ${DEVICE_BATT_LOW}" | bc)" -eq "1" ]; then
 							DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
 						fi
 					else
@@ -485,7 +486,7 @@ system_shutdown_timer() {
 	QUERY="0"
 	RETRY="0"
 	while :; do
-		if [ "${RETRY}" -eq "${SYS_SHUTDOWN_DELAY}" ] && [ "${SYS_SHUTDOWN_DELAY}" -ne "0" ]; then
+		if [ "${RETRY}" -ge "${SYS_SHUTDOWN_DELAY}" ] && [ "${SYS_SHUTDOWN_DELAY}" -ne "0" ]; then
 			# Shutdown system if still running on battery power.
 			system_shutdown_cmd
 		else
@@ -511,7 +512,7 @@ system_shutdown_timer() {
 
 		# Workaround to append relative time compensation.
 		if [ "${QUERY}" = "1" ]; then
-			QUERY_TIME="4"
+			QUERY_TIME="${STAT_INTERVAL}"
 		else
 			QUERY_TIME="1"
 		fi

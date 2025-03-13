@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.6.03......Code improvements and fixes.
 1.6.02......Change battery age format to YYYMMDD.
 1.6.01......Minor code changes and improvements.
 1.6.00......Use either integer or float voltage parameter values.

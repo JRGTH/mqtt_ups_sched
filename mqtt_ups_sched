@@ -144,6 +144,7 @@ SYS_SHUTDOWN_CMD="${DEFAULT_CMD}"
 SYS_SHUTDOWN_DELAY="${DEFAULT_DELAY}"
 
 # Set "YES" here if the system must shutdown immediately if system battery low mode/threshold is reached.
+# Note that this will be executed regardless of the "SYS_SHUTDOWN_DELAY" parameter configuration if enabled.
 SYS_LOWBATT_FASTSHUTDOWN="${DEFAULT_LOWBATT_FASTSHUTDOWN}"
 
 # Set "YES" here to enable system beeps during some state events.
@@ -486,14 +487,15 @@ system_shutdown_timer() {
 	QUERY="0"
 	RETRY="0"
 	while :; do
+		# If the config parameter "SYS_SHUTDOWN_DELAY" is set to "0" the shutdown delay timer will be ignored.
 		if [ "${RETRY}" -ge "${SYS_SHUTDOWN_DELAY}" ] && [ "${SYS_SHUTDOWN_DELAY}" -ne "0" ]; then
 			# Shutdown system if still running on battery power.
 			system_shutdown_cmd
 		else
 			# Rescan device status before shutdown.
-			# Unfortunately this will add extra delay to the final shutdown time, this is due to the time it takes to ping/query the topics in regards(Device mode and battery voltage).
-			# Hence the time has to be relatively compensated eg. 30x3, where "30" is the wanted shutdown secs and the "3" is the secs the system need to query the device states,
-			# so it may yield about "90" secs or even more to the final shutdown delay if not compensated, also be aware that this may vary per system.
+			# Be aware that the final shutdown time here may be relative, this is due to the execution time it takes to ping/query the topics in regards(Device mode, Battery state etc).
+			# Hence the time will be relatively compensated to get the closest approximation, this may be improved in further releases however refer to the hard coded "STAT_INTERVAL"
+			# global variable for custom changes in the meantime, the appended "seconds" should be greater than zero and must be an integer value.
 			QUERY="1"
 			device_status
 
@@ -511,6 +513,7 @@ system_shutdown_timer() {
 		fi
 
 		# Workaround to append relative time compensation.
+		# This may be improved in further releases.
 		if [ "${QUERY}" = "1" ]; then
 			QUERY_TIME="${STAT_INTERVAL}"
 		else

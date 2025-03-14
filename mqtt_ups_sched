@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.04"
+VERSION="1.6.05"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -482,6 +482,20 @@ system_shutdown_cmd() {
 	exit 0
 }
 
+system_shutdown_lowbatt() {
+	current_date
+	MSG="System running on low battery power!"
+	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+	logger -t ${SCRIPTNAME} ${MSG}
+	if [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "YES" -o "${SYS_LOWBATT_FASTSHUTDOWN}" = "yes" ]; then
+		# Shutdown system immediately if running on low battery.
+		system_shutdown_cmd
+	else
+		# Initialize the system shutdown countdown.
+		system_shutdown_timer
+	fi
+}
+
 system_shutdown_timer() {
 	speaker_beep
 	QUERY="0"
@@ -506,6 +520,8 @@ system_shutdown_timer() {
 				echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 				logger -t ${SCRIPTNAME} ${MSG}
 				break
+			elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
+				system_shutdown_lowbatt
 			elif [ -z "${DEV_STATUS}" ]; then
 				# Notify communication with the device is lost.
 				device_commlost
@@ -564,17 +580,7 @@ cmd_main() {
 			logger -t ${SCRIPTNAME} ${MSG}
 			system_shutdown_timer
 		elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
-			current_date
-			MSG="System running on low battery power!"
-			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-			logger -t ${SCRIPTNAME} ${MSG}
-			if [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "YES" -o "${SYS_LOWBATT_FASTSHUTDOWN}" = "yes" ]; then
-				# Shutdown system immediately if running on low battery.
-				system_shutdown_cmd
-			else
-				# Initialize the system shutdown countdown.
-				system_shutdown_timer
-			fi
+			system_shutdown_lowbatt
 		elif [ -z "${DEV_STATUS}" ]; then
 			# Notify we lost communication with the device.
 			device_commlost

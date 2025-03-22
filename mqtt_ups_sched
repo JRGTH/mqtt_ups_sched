@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.05"
+VERSION="1.6.06"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -394,7 +394,7 @@ device_status() {
 					cmd_battstate
 					# Check if running on low battery.
 					if [ -n "${BATT_STATUS}" ]; then
-						if [ "$(echo "${BATT_STATUS} < ${DEVICE_BATT_LOW}" | bc)" -eq "1" ]; then
+						if [ "$(echo "${BATT_STATUS} <= ${DEVICE_BATT_LOW}" | bc)" -eq "1" ]; then
 							DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
 						fi
 					else

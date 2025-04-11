@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.07"
+VERSION="1.6.08"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"

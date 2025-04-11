@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.06"
+VERSION="1.6.07"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -130,8 +130,8 @@ DEVICE_NAME="[${DEFAULT_NAME}]"
 # Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW=""
 
-# Set the battery last changed date in "YYYYMMDD" for logging and reference.
-DEVICE_BATT_CHANGE=""
+# Set the battery inatallation date in "YYYYMMDD" for logging and reference.
+DEVICE_BATT_INSTALL=""
 
 # Set the battery max age in "Y" years before replacement for logging and reference.
 DEVICE_BATT_MAXAGE=""
@@ -169,7 +169,7 @@ EOF
 		BROKER_TOPIC_STATS=$(sysrc -f ${CONFIG_FILE} -qn BROKER_TOPIC_STATS)
 		DEVICE_NAME="[$(sysrc -f ${CONFIG_FILE} -qn DEVICE_NAME)]"
 		DEVICE_BATT_LOW=$(sysrc -f ${CONFIG_FILE} -qn DEVICE_BATT_LOW)
-		DEVICE_BATT_CHANGE=$(sysrc -f ${CONFIG_FILE} -qn DEVICE_BATT_CHANGE)
+		DEVICE_BATT_INSTALL=$(sysrc -f ${CONFIG_FILE} -qn DEVICE_BATT_INSTALL)
 		DEVICE_BATT_MAXAGE=$(sysrc -f ${CONFIG_FILE} -qn DEVICE_BATT_MAXAGE)
 		SYS_SHUTDOWN_CMD=$(sysrc -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_CMD)
 		SYS_SHUTDOWN_DELAY=$(sysrc -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_DELAY)
@@ -277,17 +277,19 @@ current_date() {
 check_battage() {
 	# Get a quick battery age approximation just for logging and reference purposes only.
 	# This assumes the user properly configured the required parameter as there is no validation check.
-	BATTERY_YEAR=$(echo "${DEVICE_BATT_CHANGE}" | cut -c 1-4)
+	BATTERY_YEAR=$(echo "${DEVICE_BATT_INSTALL}" | cut -c 1-4)
 	CURRENT_YEAR=$(date +%Y)
 	BATTERY_AGED=$(expr "${CURRENT_YEAR}" - "${BATTERY_YEAR}")
 	if [ "${BATTERY_AGED}" -ge "${DEVICE_BATT_MAXAGE}" ]; then
 		current_date
 		speaker_beep
-		MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_CHANGE}"
+		MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_INSTALL}"
 		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
-		BATT_ALERT="1"
 	fi
+
+	# Check for approximate battery age on startup then monthly.
+	sleep 2592000 && check_battage &
 }
 
 speaker_beep() {
@@ -420,13 +422,6 @@ device_status() {
 		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
 		exit 1
-	fi
-
-	# Get approximate battery age status and logging.
-	if [ -n "${DEVICE_BATT_CHANGE}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
-		if [ "${BATT_ALERT}" -eq "0" ]; then
-			check_battage
-		fi
 	fi
 }
 
@@ -586,6 +581,13 @@ cmd_main() {
 			device_commlost
 		fi
 	done &
+
+	# Get approximate battery age status and logging.
+	if [ -n "${DEVICE_BATT_INSTALL}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
+		if [ "${BATT_ALERT}" -eq "0" ]; then
+			check_battage
+		fi
+	fi
 
 	if [ "$?" -eq "0" ]; then
 		MSG="script started successfully!"

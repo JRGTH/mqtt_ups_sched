@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.08"
+VERSION="1.6.09"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -286,10 +286,8 @@ check_battage() {
 		MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_INSTALL}"
 		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
+		BATT_ALERT="1"
 	fi
-
-	# Check for approximate battery age on startup then monthly.
-	sleep 2592000 && check_battage &
 }
 
 speaker_beep() {
@@ -427,6 +425,13 @@ device_status() {
 		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
 		exit 1
+	fi
+
+	# Get approximate battery age status and logging.
+	if [ -n "${DEVICE_BATT_INSTALL}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
+		if [ "${BATT_ALERT}" -eq "0" ]; then
+			check_battage
+		fi
 	fi
 }
 
@@ -586,13 +591,6 @@ cmd_main() {
 			device_commlost
 		fi
 	done &
-
-	# Get approximate battery age status and logging.
-	if [ -n "${DEVICE_BATT_INSTALL}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
-		if [ "${BATT_ALERT}" -eq "0" ]; then
-			check_battage
-		fi
-	fi
 
 	if [ "$?" -eq "0" ]; then
 		MSG="script started successfully!"

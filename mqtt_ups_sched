@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.09"
+VERSION="1.6.10"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -45,8 +45,8 @@ cmd_usage() {
 Options:
       start       Start ${SCRIPTNAME} script.
       stop        Stop ${SCRIPTNAME} sctipt.
-      stats       Display raw device states.
-      stats_json  Display device states in JSON format.
+      stat        Display raw device states.
+      jstat       Display device states in JSON format.
       logs        Display device logs.
       version     Display ${SCRIPTNAME} version.
       help        Display this help message."
@@ -605,12 +605,12 @@ case "${1}" in
 		cmd_main;;
 	stop)
 		cmd_stop;;
-	stats)
+	stat)
 		cmd_devstats;;
-	stats_json)
+	jstat)
 		JSON_FORMAT="1"
 		cmd_devstats;;
-	logs)
+	log)
 		cmd_logview;;
 	version|-v)
 		cmd_version;;

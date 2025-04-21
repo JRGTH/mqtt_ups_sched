@@ -14,7 +14,7 @@ mqtt_ups_sched
 * EASun
 * PowMR
 
- And similar rebranded AIO inverters supporting SolarAssistant or similar.
+ And similar rebranded AIO inverters, technically should work with any inverter supporting SolarAssistant or similar MQTT broker server.
  
 Host requirements
 ===============
@@ -27,8 +27,8 @@ Usage: mqtt_ups_sched [option]
 Options:
       start       Start mqtt_ups_sched script.
       stop        Stop mqtt_ups_sched sctipt.
-      stats       Display raw device states.
-      stats_json  Display device states in JSON format.
+      stat        Display raw device states.
+      jstat       Display device states in JSON format.
       version     Display mqtt_ups_sched version.
       help        Display this help message.
 ```

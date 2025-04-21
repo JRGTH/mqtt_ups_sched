@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.10"
+VERSION="1.6.11"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -47,7 +47,7 @@ Options:
       stop        Stop ${SCRIPTNAME} sctipt.
       stat        Display raw device states.
       jstat       Display device states in JSON format.
-      logs        Display device logs.
+      log         Display device logs.
       version     Display ${SCRIPTNAME} version.
       help        Display this help message."
 	exit 1

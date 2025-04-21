@@ -29,6 +29,7 @@ Options:
       stop        Stop mqtt_ups_sched sctipt.
       stat        Display raw device states.
       jstat       Display device states in JSON format.
+      log         Display device logs.
       version     Display mqtt_ups_sched version.
       help        Display this help message.
 ```

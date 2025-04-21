@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.6.11......Update readme, rename log cmd.
 1.6.10......Update readme, simplify status/log cmd name.
 1.6.09......Revert to check battery age once on startup.
 1.6.08......Improve device stats info for json format.

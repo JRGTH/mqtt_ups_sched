@@ -65,7 +65,7 @@ Configuration Sample #1:
 # Run-time configuration file for mqtt_ups_sched.
 # Auto-generated file from mqtt_ups_sched.
 
-# Set the broker local IP address.
+# Set the MQTT broker server local IP address.
 BROKER_IP="192.168.1.141"
 
 # Set the broker port, default is 1883 and must be allowed by firewall.
@@ -90,11 +90,11 @@ BROKER_TOPIC_STATS="# -R -C 18"
 # Provide a device name here for logging and reference.
 DEVICE_NAME="SRNE V2"
 
-# Set the minimum battery voltage to be considered as "system battery low" mode.
+# Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW="23"
 
-# Set the battery last changed date in "MMDDYYYY" for logging and reference.
-DEVICE_BATT_CHANGE="10252023"
+# Set the battery inatallation date in "YYYYMMDD" for logging and reference.
+DEVICE_BATT_INSTALL="20231025"
 
 # Set the battery max age in "Y" years before replacement for logging and reference.
 DEVICE_BATT_MAXAGE="5"
@@ -102,16 +102,18 @@ DEVICE_BATT_MAXAGE="5"
 # Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".
 SYS_SHUTDOWN_CMD="/sbin/shutdown -p now"
 
-# Set the desired shutdown delay time in seconds.
+# Set the desired shutdown delay time in seconds, please use an integer value here, set to 0 to disable.
+# Time here may be relative due to the time it takes to query the topics and may vary per system.
 SYS_SHUTDOWN_DELAY="360"
 
 # Set "YES" here if the system must shutdown immediately if system battery low mode/threshold is reached.
+# Note that this will be executed regardless of the "SYS_SHUTDOWN_DELAY" parameter configuration if enabled.
 SYS_LOWBATT_FASTSHUTDOWN="YES"
 
 # Set "YES" here to enable system beeps during some state events.
 SYS_BEEP_ENABLE="YES"
 
-# Set the system max retry count in seconds during commlost/errors before the script halts.
+# Set the system max retry count in seconds during commlost/errors before the script halts, please use an integer value here.
 SYS_RETRY_COUNT="30"
 ```
 #### The above configuration will yield all the device states.

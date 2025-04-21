@@ -137,7 +137,7 @@ DEVICE_NAME="[SRNE_INV_1]"
 ```
 #### The above configuration will yield the following select "state" output:
 ```shell
-mqtt_ups_sched stats
+mqtt_ups_sched stat
 [SRNE_INV_1] 2023-12-30 16:55:10 DEVICE STATUS:
 solar_assistant/inverter_1/battery_voltage/state 27.6
 solar_assistant/inverter_1/grid_voltage/state 118.3

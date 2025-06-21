@@ -313,7 +313,7 @@ cmd_devstats() {
 		runtime_config
 
 		# Display device extra info/topics/stats.
-		if [ -n "${USER_TOPIC}" ] || [ -n "${BROKER_TOPIC_STATS}" ]; then		
+		if [ -n "${USER_TOPIC}" ] || [ -n "${BROKER_TOPIC_STATS}" ]; then
 			if [ "${JSON_FORMAT}" -eq "1" ]; then
 				echo "{\"dev\":\"${DEVICE_NAME}\",\"date\":\"${DATE}\"}"
 			else

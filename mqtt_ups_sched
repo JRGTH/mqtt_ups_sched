@@ -334,6 +334,7 @@ cmd_devstats() {
 					for COUNT in ${BROKER_TOPIC_STATS}; do
 						NUM_COUNT=$(expr 1 + ${NUM_COUNT})
 					done
+					for TOPIC in ${BROKER_TOPIC_STATS}; do
 						STAT_SELECT=$(echo " -t ${TOPIC}"${STAT_SELECT})
 					done
 					if [ -n "${STAT_SELECT}" ]; then

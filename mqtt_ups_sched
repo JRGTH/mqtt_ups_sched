@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.6.11"
+VERSION="1.7.00"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -41,7 +41,7 @@ cmd_version() {
 }
 
 cmd_usage() {
-	echo -e "Usage: ${SCRIPTNAME} [option]
+	echo -e "Usage: ${SCRIPTNAME} [option] | [topic]
 Options:
       start       Start ${SCRIPTNAME} script.
       stop        Stop ${SCRIPTNAME} sctipt.
@@ -82,6 +82,7 @@ BATT_STATUS=""
 DEV_STATUS=""
 JSON_FORMAT="0"
 BATT_ALERT="0"
+USER_TOPIC="${2}"
 
 check_ifrunning() {
 	# Prevent for multiple script instances.
@@ -312,37 +313,44 @@ cmd_devstats() {
 		runtime_config
 
 		# Display device extra info/topics/stats.
-		if [ -n "${BROKER_TOPIC_STATS}" ]; then
+		if [ -n "${USER_TOPIC}" ] || [ -n "${BROKER_TOPIC_STATS}" ]; then		
 			if [ "${JSON_FORMAT}" -eq "1" ]; then
 				echo "{\"dev\":\"${DEVICE_NAME}\",\"date\":\"${DATE}\"}"
 			else
 				echo "[${DEVICE_NAME}] ${DATE} Status:"
 			fi
-
-			if ! echo "${BROKER_TOPIC_STATS}" | grep -q "#"; then
-				# Display user specified topic/stats.
-				STAT_SELECT=""
-				NUM_COUNT="0"
-				for COUNT in ${BROKER_TOPIC_STATS}; do
-					NUM_COUNT=$(expr 1 + ${NUM_COUNT})
-				done
-				for TOPIC in ${BROKER_TOPIC_STATS}; do
-					STAT_SELECT=$(echo " -t ${TOPIC}"${STAT_SELECT})
-				done
-				if [ -n "${STAT_SELECT}" ]; then
-					if [ "${JSON_FORMAT}" -eq "1" ]; then
-						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
-					else
-						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
-					fi
+			# Display manually entered topic/stat once.
+			if [ -n "${USER_TOPIC}" ]; then
+				if [ "${JSON_FORMAT}" -eq "1" ]; then
+					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1 -F %j
+				else
+					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1
 				fi
 			else
-				# Display all stats once if wildcard/args "# -R -C XX" specified.
-				STAT_ALL="${BROKER_TOPIC_STATS}"
-				if [ "${JSON_FORMAT}" -eq "1" ]; then
-					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
+				if ! echo "${BROKER_TOPIC_STATS}" | grep -q "#"; then
+					# Display user specified topic/stats from config.
+					STAT_SELECT=""
+					NUM_COUNT="0"
+					for COUNT in ${BROKER_TOPIC_STATS}; do
+						NUM_COUNT=$(expr 1 + ${NUM_COUNT})
+					done
+						STAT_SELECT=$(echo " -t ${TOPIC}"${STAT_SELECT})
+					done
+					if [ -n "${STAT_SELECT}" ]; then
+						if [ "${JSON_FORMAT}" -eq "1" ]; then
+							${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+						else
+							${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+						fi
+					fi
 				else
-					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+					# Display all stats once if wildcard/args "# -R -C XX" specified.
+					STAT_ALL="${BROKER_TOPIC_STATS}"
+					if [ "${JSON_FORMAT}" -eq "1" ]; then
+						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
+					else
+						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+					fi
 				fi
 			fi
 		fi

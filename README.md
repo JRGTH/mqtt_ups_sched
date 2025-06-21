@@ -23,7 +23,7 @@ Host requirements
 Basic Usage
 -----------
 ```shell
-Usage: mqtt_ups_sched [option]
+Usage: mqtt_ups_sched [option] | [topic]
 Options:
       start       Start mqtt_ups_sched script.
       stop        Stop mqtt_ups_sched sctipt.
@@ -37,26 +37,36 @@ Options:
 Inverter Output States Sample(From SRNE/EASun)
 -------------------------------------------------------
 ```shell
-mqtt_ups_sched stats
-[SRNE V2] 2023-12-30 15:51:15 DEVICE STATUS:
-solar_assistant/inverter_1/pv_voltage/state 0.0
+mqtt_ups_sched stat
+[iSolar-MLV-3KW-U] 2025-06-21 06:10:18 Status:
+solar_assistant/inverter_1/pv_voltage/state 26.2
 solar_assistant/inverter_1/grid_frequency/state 60.04
 solar_assistant/inverter_1/pv_power/state 0
-solar_assistant/inverter_1/battery_voltage/state 27.6
-solar_assistant/inverter_1/load_apparent_power/state 441
-solar_assistant/inverter_1/temperature/state 50.5
-solar_assistant/inverter_1/load_percentage/state 14
-solar_assistant/inverter_1/battery_current/state 0.2
-solar_assistant/inverter_1/grid_power/state 453
+solar_assistant/inverter_1/battery_voltage/state 25.4
+solar_assistant/inverter_1/load_apparent_power/state 266
+solar_assistant/inverter_1/temperature/state 34.8
+solar_assistant/inverter_1/load_percentage/state 8
+solar_assistant/inverter_1/battery_current/state -0.0
+solar_assistant/inverter_1/grid_power/state 266
 solar_assistant/inverter_1/device_mode/state Grid
-solar_assistant/inverter_1/grid_voltage/state 119.1
+solar_assistant/inverter_1/grid_voltage/state 120.9
 solar_assistant/inverter_1/ac_output_frequency/state 60.04
 solar_assistant/inverter_1/pv_current/state 0.0
-solar_assistant/inverter_1/ac_output_voltage/state 119.5
-solar_assistant/inverter_1/load_power/state 370
-solar_assistant/total/battery_power/state 6
-solar_assistant/total/battery_state_of_charge/state 100
-solar_assistant/total/bus_voltage/state 333.5
+solar_assistant/inverter_1/ac_output_voltage/state 121.2
+solar_assistant/inverter_1/load_power/state 222
+solar_assistant/inverter_1/pv_voltage/state 26.2
+solar_assistant/inverter_1/grid_frequency/state 60.04
+solar_assistant/inverter_1/pv_power/state 0
+solar_assistant/inverter_1/battery_voltage/state 25.4
+solar_assistant/inverter_1/load_apparent_power/state 266
+solar_assistant/inverter_1/temperature/state 34.8
+solar_assistant/inverter_1/load_percentage/state 8
+solar_assistant/inverter_1/battery_current/state -0.0
+```
+```shell
+mqtt_ups_sched stat "solar_assistant/inverter_1/serial_number/state"
+[iSolar-MLV-3KW-U] 2025-06-21 06:15:16 Status:
+solar_assistant/inverter_1/serial_number/state SR-XXXXXXXXXX-XXXXXX
 ```
 
 Configuration Sample #1:

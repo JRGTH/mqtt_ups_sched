@@ -33,7 +33,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.7.00"
+VERSION="1.7.01"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -134,7 +134,7 @@ DEVICE_BATT_LOW=""
 # Set the battery inatallation date in "YYYYMMDD" for logging and reference.
 DEVICE_BATT_INSTALL=""
 
-# Set the battery max age in "Y" years before replacement for logging and reference.
+# Set the battery max age "count" in years before replacement for logging and reference, please use an integer value here.
 DEVICE_BATT_MAXAGE=""
 
 # Set the desired command to be executed when shutdown delay time is reached, eg: "shutdown -p now".
@@ -148,7 +148,7 @@ SYS_SHUTDOWN_DELAY="${DEFAULT_DELAY}"
 # Note that this will be executed regardless of the "SYS_SHUTDOWN_DELAY" parameter configuration if enabled.
 SYS_LOWBATT_FASTSHUTDOWN="${DEFAULT_LOWBATT_FASTSHUTDOWN}"
 
-# Set "YES" here to enable system beeps during some state events.
+# Set "YES" here to enable system beeps during some state events, system must feature an internal buzzer/speaker.
 SYS_BEEP_ENABLE="${DEFAULT_BEEP}"
 
 # Set the system max retry count in seconds during commlost/errors before the script halts, please use an integer value here.

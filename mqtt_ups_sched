@@ -1,39 +1,46 @@
 #!/bin/sh
-
-# mqtt_ups_sched
-# Simple UPS command scheduler script (mqtt_ups_sched) for FreeBSD.
-# Triggers a timed command from any specificified MQTT state event.
-# Requires a running MQTT broker to query data from your inverter in real-time.
-# Script can be renamed for multiple running instances and independent configuration.
-# Debug script.
-#set -x
-
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
 # Copyright (c) 2023 - 2025 Jose Rivera (JoseMR).
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that following conditions are met:
-# 1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
+# modification, are permitted provided that the following conditions are met:
 #
-# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS 'AS IS' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holder nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# mqtt_ups_sched
+# Simple UPS command scheduler script (mqtt_ups_sched) for FreeBSD.
+# Triggers a timed command from any specificified MQTT state event.
+# Requires a running MQTT broker to query data from device in real-time.
+# Debug script.
+#set -x
 
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.7.01"
+VERSION="1.8.00"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -57,12 +64,11 @@ Options:
 CONFIG_PATH="/usr/local/etc"
 CONFIG_FILE="${CONFIG_PATH}/${SCRIPTNAME}.conf"
 LOG_FILE="/var/log/${SCRIPTNAME}.log"
+LOCK_FILE="/var/run/${SCRIPTNAME}.lock"
 SPEAKER_DEV="/dev/speaker"
-RCCONF_FILE="/etc/rc.conf"
 TIMEOUT_CMD="timeout"
 MQTT_CMD="mosquitto_sub"
 DEFAULT_NAME="UPS"
-BROKER_MODE="MQTT"
 DEFAULT_IP="localhost"
 DEFAULT_PORT="1883"
 DEFAULT_TOPIC_GRIDMODE="Grid"
@@ -86,7 +92,7 @@ USER_TOPIC="${2}"
 
 check_ifrunning() {
 	# Prevent for multiple script instances.
-	if pgrep -qf "${SCRIPTNAME}"; then
+	if [ -f "${LOCK_FILE}" ] || pgrep -qf "${SCRIPTNAME}"; then
 		MSG="already running as PID: $(pgrep -f ${SCRIPTNAME})"
 		echo "${SCRIPTNAME} ${MSG}"
 		logger -t ${SCRIPTNAME} ${MSG}
@@ -155,7 +161,7 @@ SYS_BEEP_ENABLE="${DEFAULT_BEEP}"
 SYS_RETRY_COUNT="${DEFAULT_RETRY}"
 EOF
 
-	echo "Please check and configure [${CONFIG_FILE}] configuration file."
+	echo "Please check '${CONFIG_FILE}' config file to manually configure additional parameters."
 	exit 0
 	fi
 
@@ -185,14 +191,12 @@ EOF
 
 check_config() {
 	# Ensure mosquitto_sub is present in MQTT mode.
-	if [ "${BROKER_MODE}" = "MQTT" -o "${BROKER_MODE}" = "mqtt" ]; then
-		if ! which -s "${MQTT_CMD}"; then
-			current_date
-			MSG="Required '${MQTT_CMD}' command not found, exiting!"
-			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-			logger -t ${SCRIPTNAME} ${MSG}
-			exit 1
-		fi
+	if ! which -s "${MQTT_CMD}"; then
+		current_date
+		MSG="Required '${MQTT_CMD}' command not found, exiting!"
+		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+		logger -t ${SCRIPTNAME} ${MSG}
+		exit 1
 	fi
 
 	if [ -z "${DEVICE_NAME}" ]; then
@@ -271,7 +275,6 @@ check_config() {
 
 current_date() {
 	# Get current date.
-	DATE=""
 	DATE=$(date +"%Y-%m-%d %T")
 }
 
@@ -293,7 +296,7 @@ check_battage() {
 
 speaker_beep() {
 	# Play beeps on device events.
-	if [ "${SYS_BEEP_ENABLE}" = "YES" -o "${SYS_BEEP_ENABLE}" = "yes" ]; then
+	if [ "${SYS_BEEP_ENABLE}" = "YES" ] || [ "${SYS_BEEP_ENABLE}" = "yes" ]; then
 		if [ -c "${SPEAKER_DEV}" ]; then
 			echo ${BEEP_TONE} > ${SPEAKER_DEV}
 		else
@@ -364,13 +367,13 @@ cmd_devstats() {
 cmd_devstate() {
 	# Get device status.
 	DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
-	DEV_TIMEOUT="$?"
+	DEV_STATUS_RETURN="$?"
 }
 
 cmd_battstate() {
 	# Get battery status.
 	BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null)
-	BATT_TIMEOUT="$?"
+	BATT_STATUS_RETURN="$?"
 }
 
 cmd_logview() {
@@ -390,50 +393,39 @@ cmd_logview() {
 
 device_status() {
 	# Get device status.
-	if [ "${BROKER_MODE}" = "MQTT" ]; then
-		DEV_TIMEOUT=""
-		BATT_TIMEOUT=""
-		DEV_STATUS=""
-		BATT_STATUS=""
-		STATUS_DEVSTALE=""
-		# Standard UPS/Inverter status, use command timeout to avoid execution hang if poor communication.
-		if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then
-			cmd_devstate
-			if [ -n "${DEV_STATUS}" ]; then
-				# Check if running on utility grid.
-				if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then
-					DEV_STATUS="${BROKER_TOPIC_GRIDMODE}"
-				# Check if running on battery.
-				elif [ "${DEV_STATUS}" = "${BROKER_TOPIC_BATTMODE}" ]; then
-					cmd_battstate
-					# Check if running on low battery.
-					if [ -n "${BATT_STATUS}" ]; then
-						if [ "$(echo "${BATT_STATUS} <= ${DEVICE_BATT_LOW}" | bc)" -eq "1" ]; then
-							DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
-						fi
+	STATUS_DEVSTALE=""
+	# Standard UPS/Inverter status, use command timeout to avoid execution hang if poor communication.
+	if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then
+		cmd_devstate
+		if [ -n "${DEV_STATUS}" ]; then
+			# Check if running on utility grid.
+			if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then
+				DEV_STATUS="${BROKER_TOPIC_GRIDMODE}"
+			# Check if running on battery.
+			elif [ "${DEV_STATUS}" = "${BROKER_TOPIC_BATTMODE}" ]; then
+				cmd_battstate
+				# Check if running on low battery.
+				if [ -n "${BATT_STATUS}" ]; then
+					if [ "$(echo "${BATT_STATUS} <= ${DEVICE_BATT_LOW}" | bc)" -eq "1" ]; then
+						DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
+					fi
+				else
+					# Make sure to set STATUS_DEVSTALE only if command times out.
+					if [ "${BATT_STATUS_RETURN}" -ne "0" ]; then
+						STATUS_DEVSTALE="1"
 					else
-						# Make sure to set STATUS_DEVSTALE only if command times out.
-						if [ "${BATT_TIMEOUT}" -eq "124" ]; then
-							STATUS_DEVSTALE="1"
-						else
-							MSG="Warning: Unable to read battery voltage status."
-							echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-							logger -t ${SCRIPTNAME} ${MSG}
-						fi
+						MSG="Warning: Unable to read battery voltage status."
+						echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+						logger -t ${SCRIPTNAME} ${MSG}
 					fi
 				fi
-			else
-				# Make sure to set STATUS_DEVSTALE only if command times out.
-				if [ "${DEV_TIMEOUT}" -eq "124" ]; then
-					STATUS_DEVSTALE="1"
-				fi
+			fi
+		else
+			# Make sure to set STATUS_DEVSTALE only if command times out.
+			if [ "${DEV_STATUS_RETURN}" -ne "0" ]; then
+				STATUS_DEVSTALE="1"
 			fi
 		fi
-	else
-		MSG="=> Unknown device or parameter, exiting."
-		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-		logger -t ${SCRIPTNAME} ${MSG}
-		exit 1
 	fi
 
 	# Get approximate battery age status and logging.
@@ -501,7 +493,7 @@ system_shutdown_lowbatt() {
 	MSG="System running on low battery power!"
 	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 	logger -t ${SCRIPTNAME} ${MSG}
-	if [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "YES" -o "${SYS_LOWBATT_FASTSHUTDOWN}" = "yes" ]; then
+	if [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "YES" ] || [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "yes" ]; then
 		# Shutdown system immediately if running on low battery.
 		system_shutdown_cmd
 	else
@@ -556,15 +548,12 @@ system_shutdown_timer() {
 
 cmd_stop() {
 	current_date
-	if [ -z "${DEVICE_NAME}" ]; then
-		DEVICE_NAME="[$(sysrc -f ${CONFIG_FILE} -qn DEVICE_NAME)]"
-	fi
-
-	if pgrep -qf "${SCRIPTNAME}"; then
+	if [ -f "${LOCK_FILE}" ] || pgrep -qf "${SCRIPTNAME}"; then
 		echo "Stopping ${SCRIPTNAME}..."
+		rm ${LOCK_FILE}
 		pkill -f ${SCRIPTNAME} && \
-		MSG="script stopped successfully!"
-		echo "${DEVICE_NAME} ${DATE}: ${SCRIPTNAME} ${MSG}" >> ${LOG_FILE}
+		MSG="Script stopped successfully!"
+		echo "${SCRIPTNAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
 		exit 0
 	else
@@ -602,8 +591,9 @@ cmd_main() {
 	done &
 
 	if [ "$?" -eq "0" ]; then
-		MSG="script started successfully!"
-		echo "${DEVICE_NAME} ${DATE}: ${SCRIPTNAME} ${MSG}" >> ${LOG_FILE}
+		touch "${LOCK_FILE}"
+		MSG="Script started successfully!"
+		echo "${SCRIPTNAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
 	fi
 }

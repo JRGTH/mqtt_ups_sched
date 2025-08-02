@@ -40,7 +40,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME=$(basename $0)
-VERSION="1.8.00"
+VERSION="1.8.01"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -551,7 +551,7 @@ cmd_stop() {
 	if [ -f "${LOCK_FILE}" ] || pgrep -qf "${SCRIPTNAME}"; then
 		echo "Stopping ${SCRIPTNAME}..."
 		rm ${LOCK_FILE}
-		pkill -f ${SCRIPTNAME} && \
+		pkill -f ${SCRIPTNAME}
 		MSG="Script stopped successfully!"
 		echo "${SCRIPTNAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}

@@ -32,15 +32,15 @@
 
 # mqtt_ups_sched
 # Simple UPS command scheduler script (mqtt_ups_sched) for FreeBSD.
-# Triggers a timed command from any specificified MQTT state event.
+# Triggers a timed command from the specificified MQTT state event.
 # Requires a running MQTT broker to query data from device in real-time.
 # Debug script.
 #set -x
 
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
-SCRIPTNAME=$(basename $0)
-VERSION="1.8.01"
+SCRIPTNAME="mqtt_ups_sched"
+VERSION="1.9.00"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -54,7 +54,7 @@ Options:
       stop        Stop ${SCRIPTNAME} sctipt.
       stat        Display raw device states.
       jstat       Display device states in JSON format.
-      log         Display device logs.
+      log         Display event logs.
       version     Display ${SCRIPTNAME} version.
       help        Display this help message."
 	exit 1
@@ -66,8 +66,10 @@ CONFIG_FILE="${CONFIG_PATH}/${SCRIPTNAME}.conf"
 LOG_FILE="/var/log/${SCRIPTNAME}.log"
 LOCK_FILE="/var/run/${SCRIPTNAME}.lock"
 SPEAKER_DEV="/dev/speaker"
+SPEAKER_MOD="/boot/kernel/speaker.ko"
 TIMEOUT_CMD="timeout"
-MQTT_CMD="mosquitto_sub"
+SUB_CMD="mosquitto_sub"
+BC_CMD="bc"
 DEFAULT_NAME="UPS"
 DEFAULT_IP="localhost"
 DEFAULT_PORT="1883"
@@ -80,22 +82,18 @@ DEFAULT_BEEP="NO"
 DEFAULT_RETRY="15"
 DEFAULT_LOWBATT_FASTSHUTDOWN="NO"
 BEEP_TONE="G20"
-PING_COUNT="1"
-PING_RETRY="1"
 POLL_INTERVAL="5"
 STAT_INTERVAL="4"
 BATT_STATUS=""
 DEV_STATUS=""
 JSON_FORMAT="0"
-BATT_ALERT="0"
+CHECK_BATTAGE="0"
 USER_TOPIC="${2}"
 
 check_ifrunning() {
 	# Prevent for multiple script instances.
 	if [ -f "${LOCK_FILE}" ] || pgrep -qf "${SCRIPTNAME}"; then
-		MSG="already running as PID: $(pgrep -f ${SCRIPTNAME})"
-		echo "${SCRIPTNAME} ${MSG}"
-		logger -t ${SCRIPTNAME} ${MSG}
+		echo "${SCRIPTNAME} already running."
 		exit 1
 	else
 		echo "Starting ${SCRIPTNAME}..."
@@ -184,18 +182,21 @@ EOF
 		SYS_BEEP_ENABLE=$(sysrc -f ${CONFIG_FILE} -qn SYS_BEEP_ENABLE)
 		SYS_RETRY_COUNT=$(sysrc -f ${CONFIG_FILE} -qn SYS_RETRY_COUNT)
 	else
-		echo "Error: Config file not found."
+		echo "Error: Config file not found, exiting."
 		exit 1
 	fi
 }
 
 check_config() {
-	# Ensure mosquitto_sub is present in MQTT mode.
-	if ! which -s "${MQTT_CMD}"; then
-		current_date
-		MSG="Required '${MQTT_CMD}' command not found, exiting!"
-		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-		logger -t ${SCRIPTNAME} ${MSG}
+	# Ensure mosquitto_sub command is present.
+	if ! which "${SUB_CMD}" >/dev/null; then
+		echo "Required '${SUB_CMD}' command not found, exiting!"
+		exit 1
+	fi
+
+	# Ensure 'bc' command is present.
+	if ! which "${BC_CMD}" >/dev/null; then
+		echo "Required '${BC_CMD}' command not found, exiting!"
 		exit 1
 	fi
 
@@ -275,22 +276,40 @@ check_config() {
 
 current_date() {
 	# Get current date.
-	DATE=$(date +"%Y-%m-%d %T")
+	DATE="$(date +"%F %T")"
 }
 
-check_battage() {
+ping_check() {
+	RETRY="0"
+	while :; do
+		# Wait for communication before halt.
+		if [ "${RETRY}" -ge "${SYS_RETRY_COUNT}" ]; then
+			echo "Unable to ping the specified broker IP address: '${BROKER_IP}', exiting."
+			exit 1
+		else
+			if ping -c1 -t1 "${BROKER_IP}" >/dev/null; then
+				break
+			fi
+		fi
+		# Retry count bump.
+		RETRY="$(expr ${RETRY} + 1)"
+		sleep 1
+	done
+}
+
+check_batt_age() {
 	# Get a quick battery age approximation just for logging and reference purposes only.
-	# This assumes the user properly configured the required parameter as there is no validation check.
-	BATTERY_YEAR=$(echo "${DEVICE_BATT_INSTALL}" | cut -c 1-4)
-	CURRENT_YEAR=$(date +%Y)
-	BATTERY_AGED=$(expr "${CURRENT_YEAR}" - "${BATTERY_YEAR}")
+	# This assumes the user properly configured the required parameters as there is no validation check.
+	BATTERY_YEAR="$(echo "${DEVICE_BATT_INSTALL}" | cut -c 1-4)"
+	CURRENT_YEAR="$(date +%Y)"
+	BATTERY_AGED="$(expr ${CURRENT_YEAR} - ${BATTERY_YEAR})"
 	if [ "${BATTERY_AGED}" -ge "${DEVICE_BATT_MAXAGE}" ]; then
 		current_date
 		speaker_beep
 		MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_INSTALL}"
-		echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+		echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
-		BATT_ALERT="1"
+		CHECK_BATTAGE="1"
 	fi
 }
 
@@ -302,8 +321,8 @@ speaker_beep() {
 		else
 			# Try to load the speaker kernel module if available, otherwise ignore.
 			if ! kldstat -qn "speaker.ko"; then
-				if [ -f "/boot/kernel/speaker.ko" ]; then 
-					kldload "/boot/kernel/speaker.ko" > /dev/null 2>&1 && echo ${BEEP_TONE} > ${SPEAKER_DEV}
+				if [ -f "${SPEAKER_MOD}" ]; then 
+					kldload "${SPEAKER_MOD}" >/dev/null 2>&1 && echo ${BEEP_TONE} > ${SPEAKER_DEV}
 				fi
 			fi
 		fi
@@ -311,78 +330,71 @@ speaker_beep() {
 }
 
 cmd_devstats() {
-	if pgrep -qf "${SCRIPTNAME}"; then
-		current_date
-		runtime_config
+	current_date
+	runtime_config
 
-		# Display device extra info/topics/stats.
-		if [ -n "${USER_TOPIC}" ] || [ -n "${BROKER_TOPIC_STATS}" ]; then
+	# Display device extra info/topics/stats.
+	if [ -n "${USER_TOPIC}" ] || [ -n "${BROKER_TOPIC_STATS}" ]; then
+		if [ "${JSON_FORMAT}" -eq "0" ]; then
+			echo "[${DEVICE_NAME}] Status:"
+		fi
+		# Display a manually entered topic/stat once.
+		if [ -n "${USER_TOPIC}" ]; then
 			if [ "${JSON_FORMAT}" -eq "1" ]; then
-				echo "{\"dev\":\"${DEVICE_NAME}\",\"date\":\"${DATE}\"}"
+				${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1 -F %j
 			else
-				echo "[${DEVICE_NAME}] ${DATE} Status:"
+				${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1
 			fi
-			# Display manually entered topic/stat once.
-			if [ -n "${USER_TOPIC}" ]; then
-				if [ "${JSON_FORMAT}" -eq "1" ]; then
-					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1 -F %j
-				else
-					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1
+		else
+			if ! echo "${BROKER_TOPIC_STATS}" | grep -q "#"; then
+				# Display user specified topic/stats from config.
+				STAT_SELECT=""
+				NUM_COUNT="0"
+				for COUNT in ${BROKER_TOPIC_STATS}; do
+					NUM_COUNT="$(expr 1 + ${NUM_COUNT})"
+				done
+				for TOPIC in ${BROKER_TOPIC_STATS}; do
+					STAT_SELECT="$(echo " -t ${TOPIC}"${STAT_SELECT})"
+				done
+				if [ -n "${STAT_SELECT}" ]; then
+					if [ "${JSON_FORMAT}" -eq "1" ]; then
+						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+					else
+						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+					fi
 				fi
 			else
-				if ! echo "${BROKER_TOPIC_STATS}" | grep -q "#"; then
-					# Display user specified topic/stats from config.
-					STAT_SELECT=""
-					NUM_COUNT="0"
-					for COUNT in ${BROKER_TOPIC_STATS}; do
-						NUM_COUNT=$(expr 1 + ${NUM_COUNT})
-					done
-					for TOPIC in ${BROKER_TOPIC_STATS}; do
-						STAT_SELECT=$(echo " -t ${TOPIC}"${STAT_SELECT})
-					done
-					if [ -n "${STAT_SELECT}" ]; then
-						if [ "${JSON_FORMAT}" -eq "1" ]; then
-							${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
-						else
-							${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
-						fi
-					fi
+				# Display all stats once if wildcard/args "# -R -C XX" specified.
+				STAT_ALL="${BROKER_TOPIC_STATS}"
+				if [ "${JSON_FORMAT}" -eq "1" ]; then
+					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
 				else
-					# Display all stats once if wildcard/args "# -R -C XX" specified.
-					STAT_ALL="${BROKER_TOPIC_STATS}"
-					if [ "${JSON_FORMAT}" -eq "1" ]; then
-						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
-					else
-						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
-					fi
+					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
 				fi
 			fi
 		fi
-	else
-		echo "${SCRIPTNAME} is not running!"
-		exit 1
 	fi
 }
 
-cmd_devstate() {
+get_dev_state() {
 	# Get device status.
-	DEV_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)
+	DEV_STATUS="$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)"
 	DEV_STATUS_RETURN="$?"
 }
 
-cmd_battstate() {
+get_batt_state() {
 	# Get battery status.
-	BATT_STATUS=$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${MQTT_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null)
+	BATT_STATUS="$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null)"
 	BATT_STATUS_RETURN="$?"
 }
 
 cmd_logview() {
 	# Display device logs.
 	if [ -f "${LOG_FILE}" ]; then
-		echo Log file: ["${LOG_FILE}"]
+		echo "Log file: ${LOG_FILE}"
 		cat "${LOG_FILE}"
 	elif [ "/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log" ]; then
-		echo Log file: ["/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log"]
+		echo "Log file: /var/log/${SCRIPTNAME}/${SCRIPTNAME}.log"
 		cat "/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log"
 	else
 		echo "Log file not found, exiting!"
@@ -394,44 +406,43 @@ cmd_logview() {
 device_status() {
 	# Get device status.
 	STATUS_DEVSTALE=""
+	
 	# Standard UPS/Inverter status, use command timeout to avoid execution hang if poor communication.
-	if $(ping -c ${PING_COUNT} -t ${PING_RETRY} ${BROKER_IP} > /dev/null 2>&1); then
-		cmd_devstate
-		if [ -n "${DEV_STATUS}" ]; then
-			# Check if running on utility grid.
-			if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then
-				DEV_STATUS="${BROKER_TOPIC_GRIDMODE}"
-			# Check if running on battery.
-			elif [ "${DEV_STATUS}" = "${BROKER_TOPIC_BATTMODE}" ]; then
-				cmd_battstate
-				# Check if running on low battery.
-				if [ -n "${BATT_STATUS}" ]; then
-					if [ "$(echo "${BATT_STATUS} <= ${DEVICE_BATT_LOW}" | bc)" -eq "1" ]; then
-						DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
-					fi
+	get_dev_state
+	if [ -n "${DEV_STATUS}" ]; then
+		# Check if running on utility grid.
+		if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then
+			DEV_STATUS="${BROKER_TOPIC_GRIDMODE}"
+		# Check if running on battery.
+		elif [ "${DEV_STATUS}" = "${BROKER_TOPIC_BATTMODE}" ]; then
+			get_batt_state
+			# Check if running on low battery.
+			if [ -n "${BATT_STATUS}" ]; then
+				if [ "$(echo "${BATT_STATUS} <= ${DEVICE_BATT_LOW}" | ${BC_CMD})" -eq "1" ]; then
+					DEV_STATUS="${DEFAULT_TOPIC_LOWBATTMODE}"
+				fi
+			else
+				# Make sure to set STATUS_DEVSTALE only if command times out.
+				if [ "${BATT_STATUS_RETURN}" -ne "0" ]; then
+					STATUS_DEVSTALE="1"
 				else
-					# Make sure to set STATUS_DEVSTALE only if command times out.
-					if [ "${BATT_STATUS_RETURN}" -ne "0" ]; then
-						STATUS_DEVSTALE="1"
-					else
-						MSG="Warning: Unable to read battery voltage status."
-						echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-						logger -t ${SCRIPTNAME} ${MSG}
-					fi
+					MSG="Warning: Unable to read battery voltage status."
+					echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
+					logger -t ${SCRIPTNAME} ${MSG}
 				fi
 			fi
-		else
-			# Make sure to set STATUS_DEVSTALE only if command times out.
-			if [ "${DEV_STATUS_RETURN}" -ne "0" ]; then
-				STATUS_DEVSTALE="1"
-			fi
+		fi
+	else
+		# Make sure to set STATUS_DEVSTALE only if command times out.
+		if [ "${DEV_STATUS_RETURN}" -ne "0" ]; then
+			STATUS_DEVSTALE="1"
 		fi
 	fi
 
 	# Get approximate battery age status and logging.
 	if [ -n "${DEVICE_BATT_INSTALL}" ] && [ -n "${DEVICE_BATT_MAXAGE}" ]; then
-		if [ "${BATT_ALERT}" -eq "0" ]; then
-			check_battage
+		if [ "${CHECK_BATTAGE}" -eq "0" ]; then
+			check_batt_age
 		fi
 	fi
 }
@@ -440,7 +451,7 @@ device_commlost() {
 	current_date
 	speaker_beep
 	MSG="Device communication lost, waiting for connection!"
-	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+	echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 	logger -t ${SCRIPTNAME} ${MSG}
 
 	RETRY="0"
@@ -450,7 +461,7 @@ device_commlost() {
 			current_date
 			speaker_beep
 			MSG="Unable to read device status, retries exhausted exiting!"
-			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+			echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 			logger -t ${SCRIPTNAME} ${MSG}
 			exit 1
 		else
@@ -462,7 +473,7 @@ device_commlost() {
 				current_date
 				speaker_beep
 				MSG="Device communication restored!"
-				echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+				echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 				logger -t ${SCRIPTNAME} ${MSG}
 				break
 			fi
@@ -470,9 +481,9 @@ device_commlost() {
 
 		# Account for SYS_RETRY_COUNT if the device status stale.
 		if [ -n "${STATUS_DEVSTALE}" ]; then
-			RETRY=$(expr ${RETRY} + 1 + ${PING_RETRY} + ${SYS_RETRY_COUNT})
+			RETRY="$(expr ${RETRY} + 1 + ${SYS_RETRY_COUNT})"
 		else
-			RETRY=$(expr ${RETRY} + 1 + ${PING_RETRY})
+			RETRY="$(expr ${RETRY} + 1)"
 		fi
 		sleep 1
 	done
@@ -482,7 +493,7 @@ system_shutdown_cmd() {
 	current_date
 	speaker_beep
 	MSG="System going to shutdown now!"
-	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+	echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 	logger -t ${SCRIPTNAME} ${MSG}
 	${SYS_SHUTDOWN_CMD}
 	exit 0
@@ -491,7 +502,7 @@ system_shutdown_cmd() {
 system_shutdown_lowbatt() {
 	current_date
 	MSG="System running on low battery power!"
-	echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+	echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 	logger -t ${SCRIPTNAME} ${MSG}
 	if [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "YES" ] || [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "yes" ]; then
 		# Shutdown system immediately if running on low battery.
@@ -523,7 +534,7 @@ system_shutdown_timer() {
 				current_date
 				speaker_beep
 				MSG="System running on utility power!"
-				echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+				echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 				logger -t ${SCRIPTNAME} ${MSG}
 				break
 			elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
@@ -541,7 +552,7 @@ system_shutdown_timer() {
 		else
 			QUERY_TIME="1"
 		fi
-		RETRY=$(expr ${RETRY} + ${QUERY_TIME})
+		RETRY="$(expr ${RETRY} + ${QUERY_TIME})"
 		sleep 1
 	done
 }
@@ -552,21 +563,19 @@ cmd_stop() {
 		echo "Stopping ${SCRIPTNAME}..."
 		rm ${LOCK_FILE}
 		pkill -f ${SCRIPTNAME}
-		MSG="Script stopped successfully!"
-		echo "${SCRIPTNAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
-		logger -t ${SCRIPTNAME} ${MSG}
 		exit 0
 	else
-		echo "${SCRIPTNAME} is not running!"
+		echo "${SCRIPTNAME} not running!"
 		exit 1
 	fi
 }
 
-cmd_main() {
+cmd_start() {
 	current_date
 	check_ifrunning
 	runtime_config
 	check_config
+	ping_check
 	speaker_beep
 
 	while :; do
@@ -579,7 +588,7 @@ cmd_main() {
 			# Initialize the system shutdown countdown.
 			current_date
 			MSG="System running on battery power!"
-			echo "${DEVICE_NAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+			echo "${DATE} ${DEVICE_NAME}: ${MSG}" >> ${LOG_FILE}
 			logger -t ${SCRIPTNAME} ${MSG}
 			system_shutdown_timer
 		elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
@@ -593,28 +602,41 @@ cmd_main() {
 	if [ "$?" -eq "0" ]; then
 		touch "${LOCK_FILE}"
 		MSG="Script started successfully!"
-		echo "${SCRIPTNAME} ${DATE}: ${MSG}" >> ${LOG_FILE}
+		echo "${DATE}: ${SCRIPTNAME} ${MSG}" >> ${LOG_FILE}
 		logger -t ${SCRIPTNAME} ${MSG}
+	else
+		MSG="Script startup error, exiting."
+		echo "${DATE}: ${SCRIPTNAME} ${MSG}" >> ${LOG_FILE}
+		logger -t ${SCRIPTNAME} ${MSG}
+		exit 1
 	fi
 }
 
 # Handle script options.
 case "${1}" in
 	start)
-		cmd_main;;
+		cmd_start
+		;;
 	stop)
-		cmd_stop;;
+		cmd_stop
+		;;
 	stat)
-		cmd_devstats;;
+		cmd_devstats
+		;;
 	jstat)
 		JSON_FORMAT="1"
-		cmd_devstats;;
+		cmd_devstats
+		;;
 	log)
-		cmd_logview;;
+		cmd_logview
+		;;
 	version|-v)
-		cmd_version;;
+		cmd_version
+		;;
 	help|-h)
-		cmd_usage;;
+		cmd_usage
+		;;
 	*)
-		cmd_usage;;
+		cmd_usage
+		;;
 esac

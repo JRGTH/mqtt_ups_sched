@@ -38,34 +38,41 @@ Inverter Output States Sample(From SRNE/EASun)
 -------------------------------------------------------
 ```shell
 mqtt_ups_sched stat
-[iSolar-MLV-3KW-U] 2025-06-21 06:10:18 Status:
-solar_assistant/inverter_1/pv_voltage/state 26.2
-solar_assistant/inverter_1/grid_frequency/state 60.04
+[iSolar-MLV-3KW-U] Status:
+solar_assistant/battery_1/state_of_charge/state 96
+solar_assistant/battery_1/cell_voltage_-_highest/state 3.333
+solar_assistant/battery_1/temperature/state 28.1
+solar_assistant/battery_1/current/state -0.4
+solar_assistant/battery_1/power/state -11
+solar_assistant/battery_1/cell_voltage_-_average/state 3.331
+solar_assistant/battery_1/temperature_1/state 28.1
+solar_assistant/battery_1/temperature_2/state 28.1
+solar_assistant/battery_1/cell_voltage_-_lowest/state 3.317
+solar_assistant/battery_1/voltage/state 26.7
+solar_assistant/battery_1/capacity/state 100
+solar_assistant/inverter_1/pv_voltage/state 0.0
+solar_assistant/inverter_1/grid_frequency/state 59.99
 solar_assistant/inverter_1/pv_power/state 0
-solar_assistant/inverter_1/battery_voltage/state 25.4
-solar_assistant/inverter_1/load_apparent_power/state 266
-solar_assistant/inverter_1/temperature/state 34.8
-solar_assistant/inverter_1/load_percentage/state 8
-solar_assistant/inverter_1/battery_current/state -0.0
-solar_assistant/inverter_1/grid_power/state 266
+solar_assistant/inverter_1/battery_voltage/state 26.6
+solar_assistant/inverter_1/load_apparent_power/state 307
+solar_assistant/inverter_1/temperature/state 34.0
+solar_assistant/inverter_1/load_percentage/state 10
+solar_assistant/inverter_1/battery_current/state 0.0
+solar_assistant/inverter_1/grid_power/state 308
 solar_assistant/inverter_1/device_mode/state Grid
-solar_assistant/inverter_1/grid_voltage/state 120.9
-solar_assistant/inverter_1/ac_output_frequency/state 60.04
+solar_assistant/inverter_1/grid_voltage/state 118.4
+solar_assistant/inverter_1/ac_output_frequency/state 59.99
 solar_assistant/inverter_1/pv_current/state 0.0
-solar_assistant/inverter_1/ac_output_voltage/state 121.2
-solar_assistant/inverter_1/load_power/state 222
-solar_assistant/inverter_1/pv_voltage/state 26.2
-solar_assistant/inverter_1/grid_frequency/state 60.04
-solar_assistant/inverter_1/pv_power/state 0
-solar_assistant/inverter_1/battery_voltage/state 25.4
-solar_assistant/inverter_1/load_apparent_power/state 266
-solar_assistant/inverter_1/temperature/state 34.8
-solar_assistant/inverter_1/load_percentage/state 8
-solar_assistant/inverter_1/battery_current/state -0.0
+solar_assistant/inverter_1/ac_output_voltage/state 119.1
+solar_assistant/inverter_1/load_power/state 247
+solar_assistant/total/battery_power/state -11
+solar_assistant/total/battery_state_of_charge/state 96
+solar_assistant/total/battery_temperature/state 28.1
+solar_assistant/total/bus_voltage/state 322.5
 ```
 ```shell
 mqtt_ups_sched stat "solar_assistant/inverter_1/serial_number/state"
-[iSolar-MLV-3KW-U] 2025-06-21 06:15:16 Status:
+[iSolar-MLV-3KW-U] Status:
 solar_assistant/inverter_1/serial_number/state SR-XXXXXXXXXX-XXXXXX
 ```
 
@@ -95,7 +102,7 @@ BROKER_TOPIC_BATTMODE="Solar/Battery"
 
 # Select the desired topic/states to be displayed separated by space, eg: "sys/inv/grid/state sys/inv/batt/state sys/inv/etc/state".
 # Optionally you can display all device states with the parameter: "# -R -C XX", where "XX" is the max topic/state items of the device.
-BROKER_TOPIC_STATS="# -R -C 18"
+BROKER_TOPIC_STATS="# -R -C 30"
 
 # Provide a device name here for logging and reference.
 DEVICE_NAME="SRNE V2"
@@ -121,7 +128,7 @@ SYS_SHUTDOWN_DELAY="360"
 SYS_LOWBATT_FASTSHUTDOWN="YES"
 
 # Set "YES" here to enable system beeps during some state events.
-SYS_BEEP_ENABLE="YES"
+SYS_BEEP_ENABLE="NO"
 
 # Set the system max retry count in seconds during commlost/errors before the script halts, please use an integer value here.
 SYS_RETRY_COUNT="30"
@@ -141,14 +148,14 @@ Configuration Sample #2:
 BROKER_TOPIC_STATS="solar_assistant/inverter_1/battery_voltage/state solar_assistant/inverter_1/grid_voltage/state solar_assistant/inverter_1/load_power/state"
 
 # Provide a device name here for logging and reference.
-DEVICE_NAME="[SRNE_INV_1]"
+DEVICE_NAME="[SRNE_INVERTER]"
 
 ~~~~~~~~~~~
 ```
 #### The above configuration will yield the following select "state" output:
 ```shell
 mqtt_ups_sched stat
-[SRNE_INV_1] 2023-12-30 16:55:10 DEVICE STATUS:
+[SRNE_INVERTER] Status:
 solar_assistant/inverter_1/battery_voltage/state 27.6
 solar_assistant/inverter_1/grid_voltage/state 118.3
 solar_assistant/inverter_1/load_power/state 360
@@ -156,12 +163,13 @@ solar_assistant/inverter_1/load_power/state 360
 
 ### Sample log output file:
 ```shell
-cat /var/log/mqtt_ups_sched.log
-[SRNE V2] 2023-12-30 10:16:18: mqtt_ups_sched script started successfully!
-[SRNE V2] 2023-12-30 10:16:18: System running on battery power!
-[SRNE V2] 2023-12-30 10:20:56: System running on utility power!
-[SRNE V2] 2023-12-30 15:01:20: mqtt_ups_sched script stopped successfully!
-[SRNE V2] 2023-12-30 15:04:33: mqtt_ups_sched script started successfully!
+mqtt_ups_sched log
+Log file: /var/log/mqtt_ups_sched.log
+2023-12-30 10:16:18: mqtt_ups_sched script started successfully!
+2023-12-30 10:16:18: SRNE_INVERTER System running on battery power!
+2023-12-30 10:20:56: SRNE_INVERTER System running on utility power!
+2023-12-30 15:01:20: mqtt_ups_sched script stopped successfully!
+2023-12-30 15:04:33: mqtt_ups_sched script started successfully!
 ```
 
 #### Example on how to quick find all "topics/states" of your AIO inverter using `mosquitto_sub`:
@@ -170,25 +178,37 @@ mosquitto_sub -h "192.168.1.120" -R -v -t "#"
 solar_assistant/inverter_1/pv_voltage/state 0.0
 solar_assistant/inverter_1/grid_frequency/state 59.95
 solar_assistant/inverter_1/pv_power/state 0
-solar_assistant/inverter_1/battery_voltage/state 27.6
-solar_assistant/inverter_1/load_apparent_power/state 450
-solar_assistant/inverter_1/temperature/state 49.7
-solar_assistant/inverter_1/load_percentage/state 15
-solar_assistant/inverter_1/battery_current/state 0.2
-solar_assistant/inverter_1/grid_power/state 439
+solar_assistant/inverter_1/battery_voltage/state 26.6
+solar_assistant/inverter_1/load_apparent_power/state 293
+solar_assistant/inverter_1/temperature/state 34.0
+solar_assistant/inverter_1/load_percentage/state 9
+solar_assistant/inverter_1/battery_current/state 0.0
+solar_assistant/inverter_1/grid_power/state 294
 solar_assistant/inverter_1/device_mode/state Grid
-solar_assistant/inverter_1/grid_voltage/state 118.7
+solar_assistant/inverter_1/grid_voltage/state 122.4
 solar_assistant/inverter_1/ac_output_frequency/state 59.95
 solar_assistant/inverter_1/pv_current/state 0.0
-solar_assistant/inverter_1/ac_output_voltage/state 119.2
-solar_assistant/inverter_1/load_power/state 377
-solar_assistant/total/battery_power/state 6
-solar_assistant/total/battery_state_of_charge/state 100
-solar_assistant/total/bus_voltage/state 333.5
+solar_assistant/inverter_1/ac_output_voltage/state 122.8
+solar_assistant/inverter_1/load_power/state 232
+solar_assistant/battery_1/state_of_charge/state 95
+solar_assistant/battery_1/cell_voltage_-_highest/state 3.332
+solar_assistant/battery_1/temperature/state 28.1
+solar_assistant/battery_1/current/state -0.4
+solar_assistant/battery_1/power/state -11
+solar_assistant/battery_1/cell_voltage_-_average/state 3.33
+solar_assistant/battery_1/temperature_1/state 28.1
+solar_assistant/battery_1/temperature_2/state 28.1
+solar_assistant/battery_1/cell_voltage_-_lowest/state 3.316
+solar_assistant/battery_1/voltage/state 26.7
+solar_assistant/battery_1/capacity/state 100
+solar_assistant/total/battery_power/state -11
+solar_assistant/total/battery_state_of_charge/state 95
+solar_assistant/total/battery_temperature/state 28.1
+solar_assistant/total/bus_voltage/state 322.5
 ```
 ##### In the above example, the SRNE inverter shows a total of 18 "topics/states", so to display all states with the `mqtt_ups_sched` command, the  below configuration can be used:
 ```shell
-BROKER_TOPIC_STATS="# -R -C 18"
+BROKER_TOPIC_STATS="# -R -C 30"
 ```
 #####  Where the `#` wildcard is used to sub to all "topics/states", the `-R` will avoid printing stale messages and the `-C 18` will tell to exit after receiving the 'msg_count' messages/states.
 

@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.9.02......Separate timeout count from sys retry count.
 1.9.01......Remove lock file if script halts.
 1.9.00......Overall code improvements and fixes, improved logging.
 1.8.01......Fix stop command if script halts on retry count.

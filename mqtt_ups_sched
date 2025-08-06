@@ -40,7 +40,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="1.9.01"
+VERSION="1.9.02"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -68,6 +68,7 @@ LOCK_FILE="/var/run/${SCRIPTNAME}.lock"
 SPEAKER_DEV="/dev/speaker"
 SPEAKER_MOD="/boot/kernel/speaker.ko"
 TIMEOUT_CMD="timeout"
+TIMEOUT_COUNT="5"
 SUB_CMD="mosquitto_sub"
 BC_CMD="bc"
 DEFAULT_NAME="UPS"
@@ -341,9 +342,9 @@ cmd_devstats() {
 		# Display a manually entered topic/stat once.
 		if [ -n "${USER_TOPIC}" ]; then
 			if [ "${JSON_FORMAT}" -eq "1" ]; then
-				${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1 -F %j
+				${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1 -F %j
 			else
-				${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1
+				${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1
 			fi
 		else
 			if ! echo "${BROKER_TOPIC_STATS}" | grep -q "#"; then
@@ -358,18 +359,18 @@ cmd_devstats() {
 				done
 				if [ -n "${STAT_SELECT}" ]; then
 					if [ "${JSON_FORMAT}" -eq "1" ]; then
-						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
 					else
-						${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
 					fi
 				fi
 			else
 				# Display all stats once if wildcard/args "# -R -C XX" specified.
 				STAT_ALL="${BROKER_TOPIC_STATS}"
 				if [ "${JSON_FORMAT}" -eq "1" ]; then
-					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
+					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
 				else
-					${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
 				fi
 			fi
 		fi
@@ -378,13 +379,13 @@ cmd_devstats() {
 
 get_dev_state() {
 	# Get device status.
-	DEV_STATUS="$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)"
+	DEV_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)"
 	DEV_STATUS_RETURN="$?"
 }
 
 get_batt_state() {
 	# Get battery status.
-	BATT_STATUS="$(${TIMEOUT_CMD} ${SYS_RETRY_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null)"
+	BATT_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null)"
 	BATT_STATUS_RETURN="$?"
 }
 
@@ -484,7 +485,7 @@ device_commlost() {
 
 		# Account for SYS_RETRY_COUNT if the device status stale.
 		if [ -n "${STATUS_DEVSTALE}" ]; then
-			RETRY="$(expr ${RETRY} + 1 + ${SYS_RETRY_COUNT})"
+			RETRY="$(expr ${RETRY} + 1 + ${TIMEOUT_COUNT})"
 		else
 			RETRY="$(expr ${RETRY} + 1)"
 		fi

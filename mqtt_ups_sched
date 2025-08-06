@@ -40,7 +40,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="1.9.03"
+VERSION="1.9.04"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -280,6 +280,18 @@ current_date() {
 	DATE="$(date +"%F %T")"
 }
 
+write_log_file() {
+	# Write to log file.
+	if [ ! -f "${LOG_FILE}" ]; then
+		touch "${LOG_FILE}"
+	fi
+
+	if [ -f "${LOG_FILE}" ]; then
+		echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
+		logger -t ${SCRIPTNAME} ${MSG}
+	fi
+}
+
 ping_check() {
 	RETRY="0"
 	while :; do
@@ -308,8 +320,7 @@ check_batt_age() {
 		current_date
 		speaker_beep
 		MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_INSTALL}"
-		echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-		logger -t ${SCRIPTNAME} ${MSG}
+		write_log_file
 		CHECK_BATTAGE="1"
 	fi
 }
@@ -428,8 +439,7 @@ device_status() {
 					STATUS_DEVSTALE="1"
 				else
 					MSG="Warning: Unable to read battery voltage status."
-					echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-					logger -t ${SCRIPTNAME} ${MSG}
+					write_log_file
 				fi
 			fi
 		fi
@@ -452,8 +462,7 @@ device_commlost() {
 	current_date
 	speaker_beep
 	MSG="Device communication lost, waiting for connection!"
-	echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-	logger -t ${SCRIPTNAME} ${MSG}
+	write_log_file
 
 	RETRY="0"
 	while :; do
@@ -462,8 +471,7 @@ device_commlost() {
 			current_date
 			speaker_beep
 			MSG="Unable to read device status, retries exhausted exiting!"
-			echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-			logger -t ${SCRIPTNAME} ${MSG}
+			write_log_file
 			if [ -f "${LOCK_FILE}" ]; then
 				rm ${LOCK_FILE}
 			fi
@@ -477,8 +485,7 @@ device_commlost() {
 				current_date
 				speaker_beep
 				MSG="Device communication restored!"
-				echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-				logger -t ${SCRIPTNAME} ${MSG}
+				write_log_file
 				break
 			fi
 		fi
@@ -497,8 +504,7 @@ system_shutdown_cmd() {
 	current_date
 	speaker_beep
 	MSG="System going to shutdown now!"
-	echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-	logger -t ${SCRIPTNAME} ${MSG}
+	write_log_file
 	${SYS_SHUTDOWN_CMD}
 	exit 0
 }
@@ -506,8 +512,7 @@ system_shutdown_cmd() {
 system_shutdown_lowbatt() {
 	current_date
 	MSG="System running on low battery power!"
-	echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-	logger -t ${SCRIPTNAME} ${MSG}
+	write_log_file
 	if [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "YES" ] || [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "yes" ]; then
 		# Shutdown system immediately if running on low battery.
 		system_shutdown_cmd
@@ -538,8 +543,7 @@ system_shutdown_timer() {
 				current_date
 				speaker_beep
 				MSG="System running on utility power!"
-				echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-				logger -t ${SCRIPTNAME} ${MSG}
+				write_log_file
 				break
 			elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
 				system_shutdown_lowbatt
@@ -592,8 +596,7 @@ cmd_start() {
 			# Initialize the system shutdown countdown.
 			current_date
 			MSG="System running on battery power!"
-			echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-			logger -t ${SCRIPTNAME} ${MSG}
+			write_log_file
 			system_shutdown_timer
 		elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
 			system_shutdown_lowbatt

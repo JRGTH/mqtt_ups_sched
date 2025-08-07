@@ -40,7 +40,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="1.9.04"
+VERSION="1.9.05"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -90,6 +90,10 @@ DEV_STATUS=""
 JSON_FORMAT="0"
 CHECK_BATTAGE="0"
 USER_TOPIC="${2}"
+
+if [ "$#" -lt "1" ] || [ "$#" -gt "2" ]; then
+	cmd_usage
+fi
 
 check_ifrunning() {
 	# Prevent for multiple script instances.

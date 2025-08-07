@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.9.05......Minor code changes and readme update.
 1.9.04......Code improvements and fixes.
 1.9.03......Minor code and wording changes.
 1.9.02......Separate timeout count from sys retry count.

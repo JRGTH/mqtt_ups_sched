@@ -2,7 +2,7 @@ mqtt_ups_sched
 =============
  ## Simple MQTT UPS Scheduler for FreeBSD.
  This simple and configurable script will add basic UPS like functionality to FreeBSD server featuring `mosquitto_sub` command to query data from an existing MQTT Broker server such as [SolarAssistant](https://solar-assistant.io/), also it meant to be executed locally and can be configured to shutdown your server during battery mode or even executing a custom command for definite purposes.
- 
+
 #### Tested devices
 * EASun Power ISolar MLV 3KW-U
 * SRNE HF2430U60-100
@@ -15,7 +15,7 @@ mqtt_ups_sched
 * PowMR
 
  And similar rebranded AIO inverters, technically should work with any inverter supporting SolarAssistant or similar MQTT broker server.
- 
+
 Host requirements
 ===============
 [MOSQUITTO(8)](https://man.freebsd.org/cgi/man.cgi?query=mosquitto&sektion=8&manpath=FreeBSD+13.2-RELEASE+and+Ports) - an MQTT broker
@@ -105,7 +105,7 @@ BROKER_TOPIC_BATTMODE="Solar/Battery"
 BROKER_TOPIC_STATS="# -R -C 30"
 
 # Provide a device name here for logging and reference.
-DEVICE_NAME="SRNE V2"
+DEVICE_NAME="SRNE_INVERTER"
 
 # Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW="23"
@@ -121,7 +121,7 @@ SYS_SHUTDOWN_CMD="/sbin/shutdown -p now"
 
 # Set the desired shutdown delay time in seconds, please use an integer value here, set to 0 to disable.
 # Time here may be relative due to the time it takes to query the topics and may vary per system.
-SYS_SHUTDOWN_DELAY="360"
+SYS_SHUTDOWN_DELAY="300"
 
 # Set "YES" here if the system must shutdown immediately if system battery low mode/threshold is reached.
 # Note that this will be executed regardless of the "SYS_SHUTDOWN_DELAY" parameter configuration if enabled.
@@ -206,11 +206,11 @@ solar_assistant/total/battery_state_of_charge/state 95
 solar_assistant/total/battery_temperature/state 28.1
 solar_assistant/total/bus_voltage/state 322.5
 ```
-##### In the above example, the SRNE inverter shows a total of 18 "topics/states", so to display all states with the `mqtt_ups_sched` command, the  below configuration can be used:
+##### In the above example, the SRNE inverter shows a total of 30 "topics/states", so to display all states with the `mqtt_ups_sched` command, the  below configuration can be used:
 ```shell
 BROKER_TOPIC_STATS="# -R -C 30"
 ```
-#####  Where the `#` wildcard is used to sub to all "topics/states", the `-R` will avoid printing stale messages and the `-C 18` will tell to exit after receiving the 'msg_count' messages/states.
+#####  Where the `#` wildcard is used to sub to all "topics/states", the `-R` will avoid printing stale messages and the `-C 30` will tell to exit after receiving the total topic/states count.
 
 ## Installation
  Just download the script and place it under `/usr/local/sbin` set proper permissions and execute it, then you can edit the configuration file after.

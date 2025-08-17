@@ -40,7 +40,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="1.9.06"
+VERSION="1.9.07"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -516,8 +516,14 @@ system_shutdown_cmd() {
 	speaker_beep
 	MSG="System going to shutdown now!"
 	write_log_file
-	${SYS_SHUTDOWN_CMD}
-	exit 0
+
+	echo "${SYS_SHUTDOWN_CMD}" | sh
+	CMD_RETURN="$?"
+	if [ "${CMD_RETURN}" -eq "0" ]; then
+		exit 0
+	else
+		exit ${CMD_RETURN}
+	fi
 }
 
 system_shutdown_lowbatt() {

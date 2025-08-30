@@ -40,7 +40,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="1.9.08"
+VERSION="1.9.09"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -163,6 +163,7 @@ SYS_BEEP_ENABLE="${DEFAULT_BEEP}"
 
 # Set the system max retry count in seconds during commlost/errors before the script halts, please use an integer value here.
 SYS_RETRY_COUNT="${DEFAULT_RETRY}"
+
 EOF
 
 	echo "Please check '${CONFIG_FILE}' config file to manually configure additional parameters."
@@ -409,6 +410,14 @@ get_batt_state() {
 	# Get battery status.
 	BATT_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTVOLT} 2>/dev/null)"
 	BATT_STATUS_RETURN="$?"
+
+	# Workaround to deal with the "0.0" voltage reading from the broker.
+	if [ "${BATT_STATUS}" = "0.0" ]; then
+		current_date
+		MSG="Wrong battery voltage reading from the broker, retrying..."
+		write_log_file
+		get_batt_state
+	fi
 }
 
 cmd_logview() {

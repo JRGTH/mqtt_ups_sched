@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.9.10......Option to monitor SOC or Voltage, wording changes.
 1.9.09......Code improvements and fixes.
 1.9.08......Minor code and wording changes.
 1.9.07......Improved shutdown command execution.

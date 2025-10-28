@@ -40,7 +40,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="1.9.10"
+VERSION="1.9.11"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -119,6 +119,9 @@ BROKER_IP="${DEFAULT_IP}"
 # Set the broker port, default is 1883 and must be allowed by firewall.
 BROKER_PORT="${DEFAULT_PORT}"
 
+# Set to "YES" if the broker is running locally with bridged config, this will override 'BROKER_IP' and 'BROKER_PORT', empty to disable.
+BROKER_BRIDGE=""
+
 # Set the broker topic of the battery state of charge, eg: "solar_assistant/total/battery_state_of_charge/state".
 # Note that this topic can be set to either the battery state of charge(soc) or the battery voltage state.
 BROKER_TOPIC_BATTSOC=""
@@ -173,22 +176,23 @@ EOF
 
 	# Initialize run-time variables.
 	if [ -f "${CONFIG_FILE}" ]; then
-		BROKER_IP=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_IP)
-		BROKER_PORT=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_PORT)
-		BROKER_TOPIC_BATTSOC=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_BATTSOC)
-		BROKER_TOPIC_DEVSTATE=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_DEVSTATE)
-		BROKER_TOPIC_GRIDMODE=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_GRIDMODE)
-		BROKER_TOPIC_BATTMODE=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_BATTMODE)
-		BROKER_TOPIC_STATS=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_STATS)
+		BROKER_IP="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_IP)"
+		BROKER_PORT="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_PORT)"
+		BROKER_BRIDGE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_BRIDGE)"
+		BROKER_TOPIC_BATTSOC="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_BATTSOC)"
+		BROKER_TOPIC_DEVSTATE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_DEVSTATE)"
+		BROKER_TOPIC_GRIDMODE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_GRIDMODE)"
+		BROKER_TOPIC_BATTMODE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_BATTMODE)"
+		BROKER_TOPIC_STATS="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_STATS)"
 		DEVICE_NAME="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_NAME)"
-		DEVICE_BATT_LOW=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_LOW)
-		DEVICE_BATT_INSTALL=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_INSTALL)
-		DEVICE_BATT_MAXAGE=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_MAXAGE)
-		SYS_SHUTDOWN_CMD=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_CMD)
-		SYS_SHUTDOWN_DELAY=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_DELAY)
-		SYS_LOWBATT_FASTSHUTDOWN=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_LOWBATT_FASTSHUTDOWN)
-		SYS_BEEP_ENABLE=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_BEEP_ENABLE)
-		SYS_RETRY_COUNT=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_RETRY_COUNT)
+		DEVICE_BATT_LOW="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_LOW)"
+		DEVICE_BATT_INSTALL="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_INSTALL)"
+		DEVICE_BATT_MAXAGE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_MAXAGE)"
+		SYS_SHUTDOWN_CMD="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_CMD)"
+		SYS_SHUTDOWN_DELAY="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_DELAY)"
+		SYS_LOWBATT_FASTSHUTDOWN="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_LOWBATT_FASTSHUTDOWN)"
+		SYS_BEEP_ENABLE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_BEEP_ENABLE)"
+		SYS_RETRY_COUNT="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_RETRY_COUNT)"
 	else
 		echo "Error: Config file not found, exiting."
 		exit 1
@@ -370,9 +374,17 @@ cmd_devstats() {
 		# Display a manually entered topic/stat once.
 		if [ -n "${USER_TOPIC}" ]; then
 			if [ "${JSON_FORMAT}" -eq "1" ]; then
-				${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1 -F %j
+				if [ "${BROKER_BRIDGE}" = "YES" ]; then
+					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -v -t ${USER_TOPIC} -C 1 -F %j
+				else
+					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1 -F %j
+				fi
 			else
-				${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1
+				if [ "${BROKER_BRIDGE}" = "YES" ]; then
+					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -v -t ${USER_TOPIC} -C 1
+				else
+					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${USER_TOPIC} -C 1
+				fi
 			fi
 		else
 			if ! echo "${BROKER_TOPIC_STATS}" | grep -q "#"; then
@@ -387,18 +399,34 @@ cmd_devstats() {
 				done
 				if [ -n "${STAT_SELECT}" ]; then
 					if [ "${JSON_FORMAT}" -eq "1" ]; then
-						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+						if [ "${BROKER_BRIDGE}" = "YES" ]; then
+							${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+						else
+							${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT} -F %j
+						fi
 					else
-						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+						if [ "${BROKER_BRIDGE}" = "YES" ]; then
+							${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -v ${STAT_SELECT} -C ${NUM_COUNT}
+						else
+							${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v ${STAT_SELECT} -C ${NUM_COUNT}
+						fi
 					fi
 				fi
 			else
 				# Display all stats once if wildcard/args "# -R -C XX" specified.
 				STAT_ALL="${BROKER_TOPIC_STATS}"
 				if [ "${JSON_FORMAT}" -eq "1" ]; then
-					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
+					if [ "${BROKER_BRIDGE}" = "YES" ]; then
+						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -v -t ${STAT_ALL} -F %j
+					else
+						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL} -F %j
+					fi
 				else
-					${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+					if [ "${BROKER_BRIDGE}" = "YES" ]; then
+						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -v -t ${STAT_ALL}
+					else
+						${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -h ${BROKER_IP} -p ${BROKER_PORT} -v -t ${STAT_ALL}
+					fi
 				fi
 			fi
 		fi
@@ -407,13 +435,21 @@ cmd_devstats() {
 
 get_dev_state() {
 	# Get device status.
-	DEV_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)"
+	if [ "${BROKER_BRIDGE}" = "YES" ]; then
+		DEV_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)"
+	else
+		DEV_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_DEVSTATE} 2>/dev/null)"
+	fi
 	DEV_STATUS_RETURN="$?"
 }
 
 get_batt_state() {
 	# Get battery status.
-	BATT_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTSOC} 2>/dev/null)"
+	if [ "${BROKER_BRIDGE}" = "YES" ]; then
+		BATT_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -t ${BROKER_TOPIC_BATTSOC} 2>/dev/null)"
+	else
+		BATT_STATUS="$(${TIMEOUT_CMD} ${TIMEOUT_COUNT} ${SUB_CMD} -C 1 -h ${BROKER_IP} -p ${BROKER_PORT} -t ${BROKER_TOPIC_BATTSOC} 2>/dev/null)"
+	fi
 	BATT_STATUS_RETURN="$?"
 
 	# Workaround to deal with the "zero" voltage reading from the broker/device.

@@ -7,9 +7,6 @@ BROKER_IP="localhost"
 # Set the broker port, default is 1883 and must be allowed by firewall.
 BROKER_PORT="1883"
 
-# Set to "YES" if the broker is running locally with bridged config, this will override 'BROKER_IP' and 'BROKER_PORT', empty to disable.
-BROKER_BRIDGE=""
-
 # Set the broker topic of the battery state of charge, eg: "solar_assistant/total/battery_state_of_charge/state".
 # Note that this topic can be set to either the battery state of charge(soc) or the battery voltage state.
 BROKER_TOPIC_BATTSOC=""

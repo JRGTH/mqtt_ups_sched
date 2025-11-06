@@ -1,8 +1,8 @@
 #!/bin/sh
-#
+
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright (c) 2023 - 2025 Jose Rivera (JoseMR).
+# Copyright (c) 2023 - 2025 José Rivera (JoseMR).
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,16 +31,17 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # mqtt_ups_sched
-# Simple UPS command scheduler script (mqtt_ups_sched) for FreeBSD.
+# Simple UPS command scheduler script (mqtt_ups_sched) for FreeBSD and Linux.
 # Triggers a timed command if the Inverter/UPS report battery mode operation.
-# Requires a running MQTT broker to query data from device in real-time.
+# Requires an MQTT broker and/or client to query data from device.
+# Requires 'bc' for comparing integer and float variables.
 # Debug script.
 #set -x
 
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="1.9.12"
+VERSION="2.0.00"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -66,12 +67,10 @@ CONFIG_FILE="${CONFIG_PATH}/${SCRIPTNAME}.conf"
 LOG_FILE="/var/log/${SCRIPTNAME}.log"
 LOCK_FILE="/var/run/${SCRIPTNAME}.lock"
 SPEAKER_DEV="/dev/speaker"
-SPEAKER_MOD="/boot/kernel/speaker.ko"
 TIMEOUT_CMD="timeout"
 TIMEOUT_COUNT="5"
 SUB_CMD="mosquitto_sub"
 BC_CMD="bc"
-SYSRC_CMD="sysrc"
 DEFAULT_NAME="UPS"
 DEFAULT_IP="localhost"
 DEFAULT_PORT="1883"
@@ -171,24 +170,25 @@ EOF
 	exit 0
 	fi
 
-	# Initialize run-time variables.
+	# Initialize run-time variables once.
+	# Will use 'grep' here for portability.
 	if [ -f "${CONFIG_FILE}" ]; then
-		BROKER_IP="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_IP)"
-		BROKER_PORT="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_PORT)"
-		BROKER_TOPIC_BATTSOC="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_BATTSOC)"
-		BROKER_TOPIC_DEVSTATE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_DEVSTATE)"
-		BROKER_TOPIC_GRIDMODE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_GRIDMODE)"
-		BROKER_TOPIC_BATTMODE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_BATTMODE)"
-		BROKER_TOPIC_STATS="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_TOPIC_STATS)"
-		DEVICE_NAME="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_NAME)"
-		DEVICE_BATT_LOW="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_LOW)"
-		DEVICE_BATT_INSTALL="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_INSTALL)"
-		DEVICE_BATT_MAXAGE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_BATT_MAXAGE)"
-		SYS_SHUTDOWN_CMD="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_CMD)"
-		SYS_SHUTDOWN_DELAY="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_DELAY)"
-		SYS_LOWBATT_FASTSHUTDOWN="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_LOWBATT_FASTSHUTDOWN)"
-		SYS_BEEP_ENABLE="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_BEEP_ENABLE)"
-		SYS_RETRY_COUNT="$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_RETRY_COUNT)"
+		BROKER_IP="$(grep -wE "BROKER_IP=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_PORT="$(grep -wE "BROKER_PORT=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_BATTSOC="$(grep -wE "BROKER_TOPIC_BATTSOC=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_DEVSTATE="$(grep -wE "BROKER_TOPIC_DEVSTATE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_GRIDMODE="$(grep -wE "BROKER_TOPIC_GRIDMODE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_BATTMODE="$(grep -wE "BROKER_TOPIC_BATTMODE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_STATS="$(grep -wE "BROKER_TOPIC_STATS=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_NAME="$(grep -wE "DEVICE_NAME=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_BATT_LOW="$(grep -wE "DEVICE_BATT_LOW=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_BATT_INSTALL="$(grep -wE "DEVICE_BATT_INSTALL=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_BATT_MAXAGE="$(grep -wE "DEVICE_BATT_MAXAGE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_SHUTDOWN_CMD="$(grep -wE "SYS_SHUTDOWN_CMD=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_SHUTDOWN_DELAY="$(grep -wE "SYS_SHUTDOWN_DELAY=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_LOWBATT_FASTSHUTDOWN="$(grep -wE "SYS_LOWBATT_FASTSHUTDOWN=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_BEEP_ENABLE="$(grep -wE "SYS_BEEP_ENABLE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_RETRY_COUNT="$(grep -wE "SYS_RETRY_COUNT=" ${CONFIG_FILE} | cut -d '"' -f2)"
 	else
 		echo "Error: Config file not found, exiting."
 		exit 1
@@ -208,52 +208,41 @@ check_config() {
 		exit 1
 	fi
 
-	# Ensure 'bc' command is present.
-	if ! which "${SYSRC_CMD}" >/dev/null; then
-		echo "Required '${SYSRC_CMD}' command not found, exiting!"
-		exit 1
-	fi
-
+	# Set required default parameters if missing and continue.
+	# Will use 'sed' here for portability.
 	if [ -z "${DEVICE_NAME}" ]; then
 		echo "=> Setting default device name."
-		${SYSRC_CMD} -f ${CONFIG_FILE} DEVICE_NAME="${DEFAULT_NAME}"
-		DEVICE_NAME=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn DEVICE_NAME)
+		sed -i "s/DEVICE_NAME=.*/DEVICE_NAME=\"${DEFAULT_NAME}\"/" ${CONFIG_FILE}
 	fi
 
 	if [ -z "${BROKER_IP}" ]; then
 		echo "=> Setting default broker ip:"
-		${SYSRC_CMD} -f ${CONFIG_FILE} BROKER_IP="${DEFAULT_PORT}"
-		BROKER_IP=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_IP)
+		sed -i "s/BROKER_IP=.*/BROKER_IP=\"${DEFAULT_IP}\"/" ${CONFIG_FILE}
 	fi
 
 	if [ -z "${BROKER_PORT}" ]; then
 		echo "=> Setting default broker port:"
-		${SYSRC_CMD} -f ${CONFIG_FILE} BROKER_PORT="${DEFAULT_PORT}"
-		BROKER_PORT=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn BROKER_PORT)
+		sed -i "s/BROKER_PORT=.*/BROKER_PORT=\"${DEFAULT_PORT}\"/" ${CONFIG_FILE}
 	fi
 
 	if [ -z "${SYS_SHUTDOWN_CMD}" ]; then
 		echo "=> Setting default shutdown command:"
-		${SYSRC_CMD} -f ${CONFIG_FILE} SYS_SHUTDOWN_CMD="${DEFAULT_CMD}"
-		SYS_SHUTDOWN_CMD=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_CMD)
+		sed -i "s/SYS_SHUTDOWN_CMD=.*/SYS_SHUTDOWN_CMD=\"${DEFAULT_CMD}\"/" ${CONFIG_FILE}
 	fi
 
 	if [ -z "${SYS_SHUTDOWN_DELAY}" ]; then
 		echo "=> Setting default shutdown delay:"
-		${SYSRC_CMD} -f ${CONFIG_FILE} SYS_SHUTDOWN_DELAY="${DEFAULT_DELAY}"
-		SYS_SHUTDOWN_DELAY=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_SHUTDOWN_DELAY)
+		sed -i "s/SYS_SHUTDOWN_DELAY=.*/SYS_SHUTDOWN_DELAY=\"${DEFAULT_DELAY}\"/" ${CONFIG_FILE}
 	fi
 
 	if [ -z "${SYS_BEEP_ENABLE}" ]; then
 		echo "=> Setting default system beep:"
-		${SYSRC_CMD} -f ${CONFIG_FILE} SYS_BEEP_ENABLE="${DEFAULT_BEEP}"
-		SYS_BEEP_ENABLE=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_BEEP_ENABLE)
+		sed -i "s/SYS_BEEP_ENABLE=.*/SYS_BEEP_ENABLE=\"${DEFAULT_BEEP}\"/" ${CONFIG_FILE}
 	fi
 
 	if [ -z "${SYS_RETRY_COUNT}" ]; then
 		echo "=> Setting default retry count:"
-		${SYSRC_CMD} -f ${CONFIG_FILE} SYS_RETRY_COUNT="${DEFAULT_RETRY}"
-		SYS_RETRY_COUNT=$(${SYSRC_CMD} -f ${CONFIG_FILE} -qn SYS_RETRY_COUNT)
+		sed -i "s/SYS_RETRY_COUNT=.*/SYS_RETRY_COUNT=\"${DEFAULT_RETRY}\"/" ${CONFIG_FILE}
 	fi
 
 	# If below parameters are not configured then inform and exit.
@@ -290,7 +279,7 @@ check_config() {
 
 current_date() {
 	# Get current date.
-	DATE="$(date +"%F %T")"
+	DATE="$(date "+%F-%T")"
 }
 
 write_log_file() {
@@ -300,8 +289,7 @@ write_log_file() {
 	fi
 
 	if [ -f "${LOG_FILE}" ]; then
-		echo "${DATE}: ${DEVICE_NAME} ${MSG}" >> ${LOG_FILE}
-		logger -t ${SCRIPTNAME} ${MSG}
+		echo "${DATE}: ${DEVICE_NAME} ${TOPIC_MSG}" >> ${LOG_FILE}
 	fi
 }
 
@@ -312,8 +300,8 @@ ping_check() {
 		if [ "${RETRY}" -ge "${SYS_RETRY_COUNT}" ]; then
 			current_date
 			speaker_beep
-			MSG="Unable to ping the specified broker IP address: '${BROKER_IP}', exiting."
-			echo "${MSG}"
+			TOPIC_MSG="Unable to ping the specified broker IP address: '${BROKER_IP}', exiting."
+			echo "${TOPIC_MSG}"
 			write_log_file
 			exit 1
 		else
@@ -336,22 +324,20 @@ check_batt_age() {
 	if [ "${BATTERY_AGED}" -ge "${DEVICE_BATT_MAXAGE}" ]; then
 		current_date
 		speaker_beep
-		MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_INSTALL}"
+		TOPIC_MSG="Currently installed battery may reached its max age!, Battery was installed on: ${DEVICE_BATT_INSTALL}"
 		write_log_file
 		CHECK_BATTAGE="1"
 	fi
 }
 
 speaker_beep() {
-	# Play beeps on device events.
+	# Play buzzer beeps on device events.
 	if [ "${SYS_BEEP_ENABLE}" = "YES" ] || [ "${SYS_BEEP_ENABLE}" = "yes" ]; then
-		if [ -c "${SPEAKER_DEV}" ]; then
-			echo ${BEEP_TONE} > ${SPEAKER_DEV}
-		else
-			# Try to load the speaker kernel module if available, otherwise ignore.
-			if ! kldstat -qn "speaker.ko"; then
-				if [ -f "${SPEAKER_MOD}" ]; then
-					kldload "${SPEAKER_MOD}" >/dev/null 2>&1 && echo ${BEEP_TONE} > ${SPEAKER_DEV}
+		PLATFORM="$(uname)"
+		if [ "${PLATFORM}" = "FreeBSD" ]; then
+			if [ -c "${SPEAKER_DEV}" ]; then
+				if kldstat -qn "speaker.ko"; then
+					echo ${BEEP_TONE} > ${SPEAKER_DEV}
 				fi
 			fi
 		fi
@@ -359,8 +345,8 @@ speaker_beep() {
 }
 
 cmd_devstats() {
-	current_date
 	runtime_config
+	current_date
 
 	# Display device extra info/topics/stats.
 	if [ -n "${USER_TOPIC}" ] || [ -n "${BROKER_TOPIC_STATS}" ]; then
@@ -419,7 +405,7 @@ get_batt_state() {
 	# Workaround to deal with the "zero" voltage reading from the broker/device.
 	if [ "${BATT_STATUS}" = "0" ] || [ "${BATT_STATUS}" = "0.0" ]; then
 		current_date
-		MSG="Wrong battery SOC/VOLTS reading from the broker: [${BATT_STATUS}], retrying..."
+		TOPIC_MSG="Wrong battery SOC/VOLTS reading from the broker: [${BATT_STATUS}], retrying..."
 		write_log_file
 		get_batt_state
 	fi
@@ -428,16 +414,12 @@ get_batt_state() {
 cmd_logview() {
 	# Display device logs.
 	if [ -f "${LOG_FILE}" ]; then
-		echo "Log file: ${LOG_FILE}"
-		cat "${LOG_FILE}"
-	elif [ "/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log" ]; then
-		echo "Log file: /var/log/${SCRIPTNAME}/${SCRIPTNAME}.log"
-		cat "/var/log/${SCRIPTNAME}/${SCRIPTNAME}.log"
+		cat "${LOG_FILE}" | tail
+		exit 0
 	else
 		echo "Log file not found, exiting!"
 		exit 1
 	fi
-	exit 0
 }
 
 device_status() {
@@ -463,7 +445,7 @@ device_status() {
 				if [ "${BATT_STATUS_RETURN}" -ne "0" ]; then
 					STATUS_DEVSTALE="1"
 				else
-					MSG="Warning: Unable to read battery SOC/VOLTS status."
+					TOPIC_MSG="Warning: Unable to read battery SOC/VOLTS status."
 					write_log_file
 				fi
 			fi
@@ -486,7 +468,7 @@ device_status() {
 device_commlost() {
 	current_date
 	speaker_beep
-	MSG="Device communication lost, waiting for connection!"
+	TOPIC_MSG="Device communication lost, waiting for connection!"
 	write_log_file
 
 	RETRY="0"
@@ -495,8 +477,8 @@ device_commlost() {
 		if [ "${RETRY}" -ge "${SYS_RETRY_COUNT}" ]; then
 			current_date
 			speaker_beep
-			MSG="Unable to read device status, retries exhausted exiting!"
-			echo "${MSG}"
+			TOPIC_MSG="Unable to read device status, retries exhausted exiting!"
+			echo "${TOPIC_MSG}"
 			write_log_file
 			if [ -f "${LOCK_FILE}" ]; then
 				rm ${LOCK_FILE}
@@ -510,7 +492,7 @@ device_commlost() {
 				# Notify device communication is back.
 				current_date
 				speaker_beep
-				MSG="Device communication restored!"
+				TOPIC_MSG="Device communication restored!"
 				write_log_file
 				break
 			fi
@@ -529,7 +511,7 @@ device_commlost() {
 system_shutdown_cmd() {
 	current_date
 	speaker_beep
-	MSG="System going to shutdown now!"
+	TOPIC_MSG="System going to shutdown now!"
 	write_log_file
 
 	echo "${SYS_SHUTDOWN_CMD}" | sh
@@ -537,7 +519,7 @@ system_shutdown_cmd() {
 	if [ "${CMD_RETURN}" -eq "0" ]; then
 		exit 0
 	else
-		MSG="Shutdown command execution returned: '${CMD_RETURN}'"
+		TOPIC_MSG="Shutdown command execution returned: '${CMD_RETURN}'"
 		write_log_file
 		exit ${CMD_RETURN}
 	fi
@@ -545,7 +527,7 @@ system_shutdown_cmd() {
 
 system_shutdown_lowbatt() {
 	current_date
-	MSG="System running on low battery power!"
+	TOPIC_MSG="System running on low battery power!"
 	write_log_file
 	if [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "YES" ] || [ "${SYS_LOWBATT_FASTSHUTDOWN}" = "yes" ]; then
 		# Shutdown system immediately if running on low battery.
@@ -576,7 +558,7 @@ system_shutdown_timer() {
 			if [ "${DEV_STATUS}" = "${BROKER_TOPIC_GRIDMODE}" ]; then
 				current_date
 				speaker_beep
-				MSG="System running on utility power!"
+				TOPIC_MSG="System running on utility power!"
 				write_log_file
 				break
 			elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
@@ -613,11 +595,11 @@ cmd_stop() {
 }
 
 cmd_start() {
-	current_date
 	check_ifrunning
 	runtime_config
 	check_config
 	ping_check
+	current_date
 	speaker_beep
 
 	while :; do
@@ -629,7 +611,7 @@ cmd_start() {
 		elif [ "${DEV_STATUS}" = "${BROKER_TOPIC_BATTMODE}" ]; then
 			# Initialize the system shutdown countdown.
 			current_date
-			MSG="System running on battery power!"
+			TOPIC_MSG="System running on battery power!"
 			write_log_file
 			system_shutdown_timer
 		elif [ "${DEV_STATUS}" = "${DEFAULT_TOPIC_LOWBATTMODE}" ]; then
@@ -642,13 +624,11 @@ cmd_start() {
 
 	if [ "$?" -eq "0" ]; then
 		touch "${LOCK_FILE}"
-		MSG="Script started successfully!"
-		echo "${DATE}: ${SCRIPTNAME} ${MSG}" >> ${LOG_FILE}
-		logger -t ${SCRIPTNAME} ${MSG}
+		TOPIC_MSG="Script started successfully!"
+		write_log_file
 	else
-		MSG="Script startup error, exiting."
-		echo "${DATE}: ${SCRIPTNAME} ${MSG}" >> ${LOG_FILE}
-		logger -t ${SCRIPTNAME} ${MSG}
+		TOPIC_MSG="Script startup error, exiting."
+		write_log_file
 		exit 1
 	fi
 }

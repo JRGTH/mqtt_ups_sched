@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+2.0.02......Minor code changes and improvements.
 2.0.00......Overall code portability improvements and cleanup.
 1.9.12......Revert bridge config mode since add redundant code.
 1.9.11......Option to run with local broker with bridge config.

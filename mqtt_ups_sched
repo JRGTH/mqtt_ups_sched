@@ -41,7 +41,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="2.0.00"
+VERSION="2.0.02"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -173,22 +173,22 @@ EOF
 	# Initialize run-time variables once.
 	# Will use 'grep' here for portability.
 	if [ -f "${CONFIG_FILE}" ]; then
-		BROKER_IP="$(grep -wE "BROKER_IP=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		BROKER_PORT="$(grep -wE "BROKER_PORT=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		BROKER_TOPIC_BATTSOC="$(grep -wE "BROKER_TOPIC_BATTSOC=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		BROKER_TOPIC_DEVSTATE="$(grep -wE "BROKER_TOPIC_DEVSTATE=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		BROKER_TOPIC_GRIDMODE="$(grep -wE "BROKER_TOPIC_GRIDMODE=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		BROKER_TOPIC_BATTMODE="$(grep -wE "BROKER_TOPIC_BATTMODE=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		BROKER_TOPIC_STATS="$(grep -wE "BROKER_TOPIC_STATS=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		DEVICE_NAME="$(grep -wE "DEVICE_NAME=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		DEVICE_BATT_LOW="$(grep -wE "DEVICE_BATT_LOW=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		DEVICE_BATT_INSTALL="$(grep -wE "DEVICE_BATT_INSTALL=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		DEVICE_BATT_MAXAGE="$(grep -wE "DEVICE_BATT_MAXAGE=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		SYS_SHUTDOWN_CMD="$(grep -wE "SYS_SHUTDOWN_CMD=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		SYS_SHUTDOWN_DELAY="$(grep -wE "SYS_SHUTDOWN_DELAY=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		SYS_LOWBATT_FASTSHUTDOWN="$(grep -wE "SYS_LOWBATT_FASTSHUTDOWN=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		SYS_BEEP_ENABLE="$(grep -wE "SYS_BEEP_ENABLE=" ${CONFIG_FILE} | cut -d '"' -f2)"
-		SYS_RETRY_COUNT="$(grep -wE "SYS_RETRY_COUNT=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_IP="$(grep "^BROKER_IP=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_PORT="$(grep "^BROKER_PORT=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_BATTSOC="$(grep "^BROKER_TOPIC_BATTSOC=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_DEVSTATE="$(grep "^BROKER_TOPIC_DEVSTATE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_GRIDMODE="$(grep "^BROKER_TOPIC_GRIDMODE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_BATTMODE="$(grep "^BROKER_TOPIC_BATTMODE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		BROKER_TOPIC_STATS="$(grep "^BROKER_TOPIC_STATS=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_NAME="$(grep "^DEVICE_NAME=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_BATT_LOW="$(grep "^DEVICE_BATT_LOW=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_BATT_INSTALL="$(grep "^DEVICE_BATT_INSTALL=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		DEVICE_BATT_MAXAGE="$(grep "^DEVICE_BATT_MAXAGE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_SHUTDOWN_CMD="$(grep "^SYS_SHUTDOWN_CMD=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_SHUTDOWN_DELAY="$(grep "^SYS_SHUTDOWN_DELAY=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_LOWBATT_FASTSHUTDOWN="$(grep "^SYS_LOWBATT_FASTSHUTDOWN=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_BEEP_ENABLE="$(grep "^SYS_BEEP_ENABLE=" ${CONFIG_FILE} | cut -d '"' -f2)"
+		SYS_RETRY_COUNT="$(grep "^SYS_RETRY_COUNT=" ${CONFIG_FILE} | cut -d '"' -f2)"
 	else
 		echo "Error: Config file not found, exiting."
 		exit 1
@@ -279,7 +279,7 @@ check_config() {
 
 current_date() {
 	# Get current date.
-	DATE="$(date "+%F-%T")"
+	DATE="$(date "+%F %T")"
 }
 
 write_log_file() {
@@ -414,7 +414,7 @@ get_batt_state() {
 cmd_logview() {
 	# Display device logs.
 	if [ -f "${LOG_FILE}" ]; then
-		cat "${LOG_FILE}" | tail
+		cat "${LOG_FILE}"
 		exit 0
 	else
 		echo "Log file not found, exiting!"

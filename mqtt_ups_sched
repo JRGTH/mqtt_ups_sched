@@ -41,7 +41,7 @@
 # Set environment.
 PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 SCRIPTNAME="mqtt_ups_sched"
-VERSION="2.0.02"
+VERSION="2.0.03"
 
 cmd_version() {
 	echo "${SCRIPTNAME} ${VERSION}"
@@ -405,7 +405,7 @@ get_batt_state() {
 	# Workaround to deal with the "zero" voltage reading from the broker/device.
 	if [ "${BATT_STATUS}" = "0" ] || [ "${BATT_STATUS}" = "0.0" ]; then
 		current_date
-		TOPIC_MSG="Wrong battery SOC/VOLTS reading from the broker: [${BATT_STATUS}], retrying..."
+		TOPIC_MSG="Wrong battery SOC/VOLTS reading: [${BATT_STATUS}], retrying..."
 		write_log_file
 		get_batt_state
 	fi

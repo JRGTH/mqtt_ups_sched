@@ -7,7 +7,7 @@ mqtt_ups_sched
 * EASun Power ISolar MLV 3KW-U
 * SRNE HF2430U60-100
 
- Tested with FreeBSD 13.2 with mosquitto 2.0.15, and SolarAssistant Software version 2023-08-16.
+ Tested with FreeBSD 13.2 with mosquitto 2.0.15, and Solar-Assistant Software version 2023-08-16.
 
 #### Supported devices may include*
 * SRNE
@@ -91,8 +91,9 @@ BROKER_IP="192.168.1.141"
 # Set the broker port, default is 1883 and must be allowed by firewall.
 BROKER_PORT="1883"
 
-# Set the broker topic of the battery voltage state, eg: "solar_assistant/inverter_1/battery_voltage/state".
-BROKER_TOPIC_BATTVOLT="solar_assistant/inverter_1/battery_voltage/state"
+# Set the broker topic of the battery state of charge, eg: "solar_assistant/total/battery_state_of_charge/state".
+# Note that this topic can be set to either the battery state of charge(soc) or the battery voltage state.
+BROKER_TOPIC_BATTSOC="solar_assistant/inverter_1/battery_voltage/state"
 
 # Set the broker topic of the device mode state, eg: "solar_assistant/inverter_1/device_mode/state".
 BROKER_TOPIC_DEVSTATE="solar_assistant/inverter_1/device_mode/state"
@@ -110,7 +111,7 @@ BROKER_TOPIC_STATS="# -R -C 30"
 # Provide a device name here for logging and reference.
 DEVICE_NAME="SRNE_INVERTER"
 
-# Set the minimum battery voltage to be considered as "system battery low" mode, please use an integer or float value here.
+# Set the minimum battery state of charge(soc) or voltage to be considered as "system battery low" mode, please use an integer or float value here.
 DEVICE_BATT_LOW="23"
 
 # Set the battery inatallation date in "YYYYMMDD" for logging and reference.

@@ -1,7 +1,7 @@
 mqtt_ups_sched
 =============
  ## Simple MQTT UPS Scheduler for FreeBSD.
- This simple and configurable script will add basic UPS like functionality to FreeBSD server featuring `mosquitto_sub` command to query data from an existing MQTT Broker server such as [SolarAssistant](https://solar-assistant.io/), also it meant to be executed locally and can be configured to shutdown your server during battery mode or even executing a custom command for definite purposes.
+ This simple and configurable script will add basic UPS like functionality to FreeBSD server featuring `mosquitto_sub` command to query data from an existing MQTT Broker server such as [Solar-Assistant](https://solar-assistant.io/), [Home-Assistant](https://www.home-assistant.io/) Etc, it meant to be executed locally and can be configured to shutdown your server during battery mode or executing a custom command for definite purposes.
 
 #### Tested devices
 * EASun Power ISolar MLV 3KW-U
@@ -13,8 +13,11 @@ mqtt_ups_sched
 * SRNE
 * EASun
 * PowMR
+* EG4
+* Growatt
+* Etc.
 
- And similar rebranded AIO inverters, technically should work with any inverter supporting SolarAssistant or similar MQTT broker server.
+ And similar rebranded AIO inverters, technically should work with any inverter supported by Solar-Assistant, Home-Assistant or similar/custom MQTT broker server.
 
 Host requirements
 ===============
